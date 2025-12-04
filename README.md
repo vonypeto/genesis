@@ -1,29 +1,166 @@
-# LlmVisibilityMono
+# LLM Visibility Mono
 
 <a alt="Nx logo" href="https://nx.dev" target="_blank" rel="noreferrer"><img src="https://raw.githubusercontent.com/nrwl/nx/master/images/nx-logo.png" width="45"></a>
 
-✨ Your new, shiny [Nx workspace](https://nx.dev) is ready ✨.
+A monorepo containing a React frontend (**web**) and NestJS backend (**agent**), built with Nx.
 
-[Learn more about this workspace setup and its capabilities](https://nx.dev/nx-api/js?utm_source=nx_project&amp;utm_medium=readme&amp;utm_campaign=nx_projects) or run `npx nx graph` to visually explore what was created. Now, let's get you up to speed!
+## Project Structure
 
-## Generate a library
-
-```sh
-npx nx g @nx/js:lib packages/pkg1 --publishable --importPath=@my-org/pkg1
+```
+llm-visibility-mono/
+├── web/                 # React frontend application (port 3001)
+├── agent/               # NestJS backend application (port 3000)
+└── packages/            # Shared libraries
+    ├── @llm/circuit-breaker
+    ├── @llm/config
+    ├── @llm/decorators
+    ├── @llm/filters
+    ├── @llm/interceptors
+    ├── @llm/rate-limiter
+    ├── @llm/redis
+    ├── @llm/repository
+    ├── @llm/shared
+    ├── @llm/types
+    └── @llm/utils
 ```
 
-## Run tasks
+## Shared Packages
 
-To build the library use:
+The monorepo includes the following shared packages that can be imported using `@llm/*` aliases:
 
-```sh
-npx nx build pkg1
+- **@llm/circuit-breaker** - Circuit breaker pattern implementation
+- **@llm/config** - NestJS configuration module
+- **@llm/decorators** - Custom decorators (API response, timing, cache)
+- **@llm/filters** - Exception filters
+- **@llm/interceptors** - Request/response interceptors
+- **@llm/rate-limiter** - Rate limiting functionality
+- **@llm/redis** - Redis integration module
+- **@llm/repository** - Repository pattern implementation
+- **@llm/shared** - Shared utilities and constants
+- **@llm/types** - TypeScript type definitions
+- **@llm/utils** - Utility functions
+
+### Using Shared Packages
+
+Import from packages using the path aliases:
+
+```typescript
+// In agent or web applications
+import { SomeDecorator } from '@llm/decorators';
+import { RedisModule } from '@llm/redis';
+import { CircuitBreaker } from '@llm/circuit-breaker';
 ```
 
-To run any task with Nx use:
+## Prerequisites
+
+- Node.js (v18 or higher)
+- pnpm (v10 or higher)
+
+## Getting Started
+
+### 1. Install Dependencies
 
 ```sh
-npx nx <target> <project-name>
+pnpm install
+```
+
+### 2. Run Applications
+
+#### Run the React frontend (web)
+
+```sh
+pnpm nx serve web
+```
+
+The frontend will be available at **http://localhost:3001**
+
+#### Run the NestJS backend (agent)
+
+```sh
+pnpm nx serve agent
+```
+
+The backend will be available at **http://localhost:3000**
+
+#### Run both applications concurrently
+
+```sh
+pnpm nx run-many -t serve -p web agent
+```
+
+### 3. Build Applications
+
+#### Build the frontend
+
+```sh
+pnpm nx build web
+```
+
+#### Build the backend
+
+```sh
+pnpm nx build agent
+```
+
+#### Build all applications
+
+```sh
+pnpm nx run-many -t build
+```
+
+### 4. Testing
+
+#### Run tests for the backend
+
+```sh
+pnpm nx test agent
+```
+
+### 5. Linting
+
+#### Lint the frontend
+
+```sh
+pnpm nx lint web
+```
+
+#### Lint the backend
+
+```sh
+pnpm nx lint agent
+```
+
+#### Lint all projects
+
+```sh
+pnpm nx run-many -t lint
+```
+
+## Common Nx Commands
+
+### View project details
+
+```sh
+pnpm nx show project web
+pnpm nx show project agent
+```
+
+### Generate a new library
+
+```sh
+pnpm nx g @nx/js:lib my-lib
+```
+
+### View the project graph
+
+```sh
+pnpm nx graph
+```
+
+### Run any task with Nx
+
+```sh
+pnpm nx <target> <project-name>
 ```
 
 These targets are either [inferred automatically](https://nx.dev/concepts/inferred-tasks?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects) or defined in the `project.json` or `package.json` files.
@@ -97,12 +234,13 @@ Nx Console is an editor extension that enriches your developer experience. It le
 
 Learn more:
 
-- [Learn more about this workspace setup](https://nx.dev/nx-api/js?utm_source=nx_project&amp;utm_medium=readme&amp;utm_campaign=nx_projects)
+- [Learn more about this workspace setup](https://nx.dev/nx-api/js?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
 - [Learn about Nx on CI](https://nx.dev/ci/intro/ci-with-nx?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
 - [Releasing Packages with Nx release](https://nx.dev/features/manage-releases?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
 - [What are Nx plugins?](https://nx.dev/concepts/nx-plugins?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
 
 And join the Nx community:
+
 - [Discord](https://go.nx.dev/community)
 - [Follow us on X](https://twitter.com/nxdevtools) or [LinkedIn](https://www.linkedin.com/company/nrwl)
 - [Our Youtube channel](https://www.youtube.com/@nxdevtools)
