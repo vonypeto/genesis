@@ -1,0 +1,39 @@
+{
+  "name": "nestjs-filters-module",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "packages/nestjs-filters-module/src",
+  "projectType": "library",
+  "tags": [],
+  "targets": {
+    "lint": {
+      "executor": "nx:run-commands",
+      "options": {
+        "commands": ["oxlint --fix --tsconfig=./tsconfig.json src/ tests/"],
+        "cwd": "packages/nestjs-filters-module"
+      }
+    },
+    "bundle": {
+      "executor": "@nx/rollup:rollup",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "main": "packages/nestjs-filters-module/src/index.ts",
+        "outputPath": "dist/packages/nestjs-filters-module",
+        "tsConfig": "packages/nestjs-filters-module/tsconfig.lib.json",
+        "project": "packages/nestjs-filters-module/package.json",
+        "assets": [
+          {
+            "input": "packages/nestjs-filters-module",
+            "glob": ".npmrc",
+            "output": "."
+          },
+          {
+            "input": "packages/nestjs-filters-module",
+            "glob": "README.md",
+            "output": "."
+          }
+        ],
+        "compiler": "tsc"
+      }
+    }
+  }
+}

@@ -2,7 +2,6 @@
   "compileOnSave": false,
   "compilerOptions": {
     "baseUrl": "./",
-    "rootDir": ".",
     "sourceMap": true,
     "declaration": false,
     "moduleResolution": "node",
@@ -23,28 +22,36 @@
     "noImplicitReturns": true,
     "noFallthroughCasesInSwitch": true,
     "paths": {
-      "@llm/circuit-breaker": ["packages/circuit-breaker/src/index.ts"],
-      "@llm/circuit-breaker/*": ["packages/circuit-breaker/src/*"],
-      "@llm/decorators": ["packages/decorators/src/index.ts"],
-      "@llm/decorators/*": ["packages/decorators/src/*"],
-      "@llm/filters": ["packages/filters/src/index.ts"],
-      "@llm/filters/*": ["packages/filters/src/*"],
-      "@llm/interceptors": ["packages/interceptors/src/index.ts"],
-      "@llm/interceptors/*": ["packages/interceptors/src/*"],
-      "@llm/config": ["packages/config/src/index.ts"],
-      "@llm/config/*": ["packages/config/src/*"],
-      "@llm/repository": ["packages/repository/src/index.ts"],
-      "@llm/repository/*": ["packages/repository/src/*"],
-      "@llm/rate-limiter": ["packages/rate-limiter/src/index.ts"],
-      "@llm/rate-limiter/*": ["packages/rate-limiter/src/*"],
-      "@llm/redis": ["packages/redis/src/index.ts"],
-      "@llm/redis/*": ["packages/redis/src/*"],
-      "@llm/shared": ["packages/shared/src/index.ts"],
-      "@llm/shared/*": ["packages/shared/src/*"],
-      "@llm/types": ["packages/types/src/index.ts"],
-      "@llm/types/*": ["packages/types/src/*"],
-      "@llm/utils": ["packages/utils/src/index.ts"],
-      "@llm/utils/*": ["packages/utils/src/*"]
+      "@genesis/circuit-breaker": [
+        "packages/nestjs-circuit-breaker-module/src/index.ts"
+      ],
+      "@genesis/circuit-breaker/*": [
+        "packages/nestjs-circuit-breaker-module/src/*"
+      ],
+      "@genesis/decorators": ["packages/nestjs-decorators-module/src/index.ts"],
+      "@genesis/decorators/*": ["packages/nestjs-decorators-module/src/*"],
+      "@genesis/filters": ["packages/nestjs-filters-module/src/index.ts"],
+      "@genesis/filters/*": ["packages/nestjs-filters-module/src/*"],
+      "@genesis/interceptors": [
+        "packages/nestjs-interceptors-module/src/index.ts"
+      ],
+      "@genesis/interceptors/*": ["packages/nestjs-interceptors-module/src/*"],
+      "@genesis/config": ["packages/nestjs-config-module/src/index.ts"],
+      "@genesis/config/*": ["packages/nestjs-config-module/src/*"],
+      "@genesis/repository": ["packages/repository/src/index.ts"],
+      "@genesis/repository/*": ["packages/repository/src/*"],
+      "@genesis/rate-limiter": [
+        "packages/nestjs-rate-limiter-module/src/index.ts"
+      ],
+      "@genesis/rate-limiter/*": ["packages/nestjs-rate-limiter-module/src/*"],
+      "@genesis/redis": ["packages/nestjs-redis-module/src/index.ts"],
+      "@genesis/redis/*": ["packages/nestjs-redis-module/src/*"],
+      "@genesis/shared": ["packages/shared/src/index.ts"],
+      "@genesis/shared/*": ["packages/shared/src/*"],
+      "@genesis/types": ["packages/types/src/index.ts"],
+      "@genesis/types/*": ["packages/types/src/*"],
+      "@genesis/utils": ["packages/utils/src/index.ts"],
+      "@genesis/utils/*": ["packages/utils/src/*"]
     }
   }
 }

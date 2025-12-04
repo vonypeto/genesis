@@ -1,4 +1,11 @@
-import { IsEmail, IsEnum, IsOptional, IsString } from 'class-validator';
+import {
+  IsEmail,
+  IsEnum,
+  IsOptional,
+  IsString,
+  MinLength,
+} from 'class-validator';
+import { AccountStatus } from '../repositories/account.repository';
 
 export class UpdateAccountDto {
   @IsEmail()
@@ -8,6 +15,11 @@ export class UpdateAccountDto {
   @IsString()
   @IsOptional()
   username?: string;
+
+  @IsString()
+  @IsOptional()
+  @MinLength(6)
+  password?: string;
 
   @IsString()
   @IsOptional()
@@ -21,9 +33,9 @@ export class UpdateAccountDto {
   @IsOptional()
   phoneNumber?: string;
 
-  @IsEnum(['active', 'inactive', 'suspended'])
+  @IsEnum(AccountStatus)
   @IsOptional()
-  status?: string;
+  status?: AccountStatus;
 
   @IsOptional()
   metadata?: Record<string, any>;

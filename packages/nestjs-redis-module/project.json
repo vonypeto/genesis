@@ -1,0 +1,39 @@
+{
+  "name": "nestjs-redis-module",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "packages/nestjs-redis-module/src",
+  "projectType": "library",
+  "tags": [],
+  "targets": {
+    "lint": {
+      "executor": "nx:run-commands",
+      "options": {
+        "commands": ["oxlint --fix --tsconfig=./tsconfig.json src/ tests/"],
+        "cwd": "packages/nestjs-redis-module"
+      }
+    },
+    "bundle": {
+      "executor": "@nx/rollup:rollup",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "main": "packages/nestjs-redis-module/src/index.ts",
+        "outputPath": "dist/packages/nestjs-redis-module",
+        "tsConfig": "packages/nestjs-redis-module/tsconfig.lib.json",
+        "project": "packages/nestjs-redis-module/package.json",
+        "assets": [
+          {
+            "input": "packages/nestjs-redis-module",
+            "glob": ".npmrc",
+            "output": "."
+          },
+          {
+            "input": "packages/nestjs-redis-module",
+            "glob": "README.md",
+            "output": "."
+          }
+        ],
+        "compiler": "tsc"
+      }
+    }
+  }
+}

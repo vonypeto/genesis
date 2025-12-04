@@ -1,0 +1,39 @@
+{
+  "name": "nestjs-circuit-breaker-module",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "packages/nestjs-circuit-breaker-module/src",
+  "projectType": "library",
+  "tags": [],
+  "targets": {
+    "lint": {
+      "executor": "nx:run-commands",
+      "options": {
+        "commands": ["oxlint --fix --tsconfig=./tsconfig.json src/ tests/"],
+        "cwd": "packages/nestjs-circuit-breaker-module"
+      }
+    },
+    "bundle": {
+      "executor": "@nx/rollup:rollup",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "main": "packages/nestjs-circuit-breaker-module/src/index.ts",
+        "outputPath": "dist/packages/nestjs-circuit-breaker-module",
+        "tsConfig": "packages/nestjs-circuit-breaker-module/tsconfig.lib.json",
+        "project": "packages/nestjs-circuit-breaker-module/package.json",
+        "assets": [
+          {
+            "input": "packages/nestjs-circuit-breaker-module",
+            "glob": ".npmrc",
+            "output": "."
+          },
+          {
+            "input": "packages/nestjs-circuit-breaker-module",
+            "glob": "README.md",
+            "output": "."
+          }
+        ],
+        "compiler": "tsc"
+      }
+    }
+  }
+}

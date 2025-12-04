@@ -1,16 +1,11 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
-import { AppController } from './app.controller';
+import { AppController } from './controllers/app.controller';
 import { AppService } from './app.service';
-import { AccountModule } from '../account/account.module';
+import { ConfigModule } from '@genesis/config';
 
 @Module({
-  imports: [
-    MongooseModule.forRoot(
-      process.env.MONGODB_URI || 'mongodb://localhost:27017/llm-visibility'
-    ),
-    AccountModule,
-  ],
+  imports: [ConfigModule.forRoot()],
   controllers: [AppController],
   providers: [AppService],
 })

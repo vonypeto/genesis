@@ -1,4 +1,4 @@
-import { MongooseRepository, Repository } from '@llm/repository';
+import { MongooseRepository, Repository } from '@genesis/repository';
 import { Connection, Schema } from 'mongoose';
 
 export enum AccountStatus {

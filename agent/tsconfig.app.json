@@ -1,22 +1,22 @@
 {
-  "extends": "../tsconfig.base.json",
+  "extends": "./tsconfig.json",
   "compilerOptions": {
-    "outDir": "dist",
+    "outDir": "../../dist/out-tsc",
+    "module": "commonjs",
     "types": ["node"],
-    "tsBuildInfoFile": "dist/tsconfig.app.tsbuildinfo",
-    "composite": true,
-    "declaration": true
+    "emitDecoratorMetadata": true,
+    "target": "es2021"
   },
-  "include": ["src/**/*.ts"],
   "exclude": [
-    "out-tsc",
-    "dist",
     "jest.config.ts",
-    "jest.config.cts",
     "src/**/*.spec.ts",
     "src/**/*.test.ts",
-    "eslint.config.js",
-    "eslint.config.cjs",
-    "eslint.config.mjs"
+    "src/**/*.legacy.ts"
+  ],
+  "include": ["src/**/*.ts"],
+  "references": [
+    {
+      "path": "../packages/nestjs-config-module/tsconfig.lib.json"
+    }
   ]
 }

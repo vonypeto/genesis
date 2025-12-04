@@ -1,0 +1,39 @@
+{
+  "name": "nestjs-config-module",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "packages/nestjs-config-module/src",
+  "projectType": "library",
+  "tags": [],
+  "targets": {
+    "lint": {
+      "executor": "nx:run-commands",
+      "options": {
+        "commands": ["oxlint --fix --tsconfig=./tsconfig.json src/ tests/"],
+        "cwd": "packages/nestjs-config-module"
+      }
+    },
+    "bundle": {
+      "executor": "@nx/rollup:rollup",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "main": "packages/nestjs-config-module/src/index.ts",
+        "outputPath": "dist/packages/nestjs-config-module",
+        "tsConfig": "packages/nestjs-config-module/tsconfig.lib.json",
+        "project": "packages/nestjs-config-module/package.json",
+        "assets": [
+          {
+            "input": "packages/nestjs-config-module",
+            "glob": ".npmrc",
+            "output": "."
+          },
+          {
+            "input": "packages/nestjs-config-module",
+            "glob": "README.md",
+            "output": "."
+          }
+        ],
+        "compiler": "tsc"
+      }
+    }
+  }
+}

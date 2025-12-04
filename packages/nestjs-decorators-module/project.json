@@ -1,0 +1,39 @@
+{
+  "name": "nestjs-decorators-module",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "packages/nestjs-decorators-module/src",
+  "projectType": "library",
+  "tags": [],
+  "targets": {
+    "lint": {
+      "executor": "nx:run-commands",
+      "options": {
+        "commands": ["oxlint --fix --tsconfig=./tsconfig.json src/ tests/"],
+        "cwd": "packages/nestjs-decorators-module"
+      }
+    },
+    "bundle": {
+      "executor": "@nx/rollup:rollup",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "main": "packages/nestjs-decorators-module/src/index.ts",
+        "outputPath": "dist/packages/nestjs-decorators-module",
+        "tsConfig": "packages/nestjs-decorators-module/tsconfig.lib.json",
+        "project": "packages/nestjs-decorators-module/package.json",
+        "assets": [
+          {
+            "input": "packages/nestjs-decorators-module",
+            "glob": ".npmrc",
+            "output": "."
+          },
+          {
+            "input": "packages/nestjs-decorators-module",
+            "glob": "README.md",
+            "output": "."
+          }
+        ],
+        "compiler": "tsc"
+      }
+    }
+  }
+}

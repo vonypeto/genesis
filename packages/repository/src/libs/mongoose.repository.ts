@@ -6,30 +6,10 @@ import {
   FilterQuery,
   UpdateQuery,
 } from 'mongoose';
-
-export interface Repository<T> {
-  create(data: Partial<T>): Promise<T>;
-  createMany(data: Partial<T>[]): Promise<T[]>;
-  findAll(page?: number, limit?: number): Promise<T[]>;
-  findOne(filter: FilterQuery<T>): Promise<T | null>;
-  findById(id: string | Buffer): Promise<T | null>;
-  update(id: string | Buffer, data: Partial<T>): Promise<T | null>;
-  updateOne(filter: FilterQuery<T>, update: UpdateQuery<T>): Promise<T | null>;
-  updateMany(
-    filter: FilterQuery<T>,
-    update: UpdateQuery<T>
-  ): Promise<{ modifiedCount: number }>;
-  delete(id: string | Buffer): Promise<T | null>;
-  deleteOne(filter: FilterQuery<T>): Promise<T | null>;
-  deleteMany(filter: FilterQuery<T>): Promise<{ deletedCount: number }>;
-  exists(filter: FilterQuery<T>): Promise<boolean>;
-  countAll(): Promise<number>;
-  countWithFilter(filter: FilterQuery<T>): Promise<number>;
-  aggregate(pipeline: any[]): Promise<any[]>;
-}
+import { Repository } from './types';
 
 export class MongooseRepository<T> implements Repository<T> {
-  protected model: Model<Document>;
+  protected model: Model<any>;
 
   constructor(
     connection: Connection,
@@ -42,7 +22,6 @@ export class MongooseRepository<T> implements Repository<T> {
       collection: modelName.toLowerCase() + 's',
     });
 
-    // Add indexes if provided
     if (indexes) {
       indexes.forEach(([fields, options]) => {
         schema.index(fields, options || {});
@@ -141,13 +120,9 @@ export class MongooseRepository<T> implements Repository<T> {
     return this.model.aggregate(pipeline).exec();
   }
 
-  /**
-   * Map Mongoose document to plain object
-   * Override this method to customize the mapping
-   */
   protected mapDocument(doc: Document): T {
     const obj = doc.toObject();
-    // Convert _id to id
+
     if (obj._id) {
       obj.id = obj._id;
       delete obj._id;

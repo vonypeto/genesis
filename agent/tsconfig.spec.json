@@ -15,9 +15,5 @@
     "src/**/*.spec.ts",
     "src/**/*.d.ts"
   ],
-  "references": [
-    {
-      "path": "./tsconfig.app.json"
-    }
-  ]
+  "references": []
 }

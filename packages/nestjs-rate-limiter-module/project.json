@@ -1,0 +1,39 @@
+{
+  "name": "nestjs-rate-limiter-module",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "packages/nestjs-rate-limiter-module/src",
+  "projectType": "library",
+  "tags": [],
+  "targets": {
+    "lint": {
+      "executor": "nx:run-commands",
+      "options": {
+        "commands": ["oxlint --fix --tsconfig=./tsconfig.json src/ tests/"],
+        "cwd": "packages/nestjs-rate-limiter-module"
+      }
+    },
+    "bundle": {
+      "executor": "@nx/rollup:rollup",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "main": "packages/nestjs-rate-limiter-module/src/index.ts",
+        "outputPath": "dist/packages/nestjs-rate-limiter-module",
+        "tsConfig": "packages/nestjs-rate-limiter-module/tsconfig.lib.json",
+        "project": "packages/nestjs-rate-limiter-module/package.json",
+        "assets": [
+          {
+            "input": "packages/nestjs-rate-limiter-module",
+            "glob": ".npmrc",
+            "output": "."
+          },
+          {
+            "input": "packages/nestjs-rate-limiter-module",
+            "glob": "README.md",
+            "output": "."
+          }
+        ],
+        "compiler": "tsc"
+      }
+    }
+  }
+}

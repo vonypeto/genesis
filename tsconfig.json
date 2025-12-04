@@ -2,45 +2,11 @@
   "extends": "./tsconfig.base.json",
   "compileOnSave": false,
   "files": [],
-  "references": [
-    {
-      "path": "./web"
-    },
-    {
-      "path": "./agent"
-    },
-    {
-      "path": "./packages/circuit-breaker"
-    },
-    {
-      "path": "./packages/interceptors"
-    },
-    {
-      "path": "./packages/rate-limiter"
-    },
-    {
-      "path": "./packages/decorators"
-    },
-    {
-      "path": "./packages/repository"
-    },
-    {
-      "path": "./packages/filters"
-    },
-    {
-      "path": "./packages/config"
-    },
-    {
-      "path": "./packages/shared"
-    },
-    {
-      "path": "./packages/redis"
-    },
-    {
-      "path": "./packages/types"
-    },
-    {
-      "path": "./packages/utils"
-    }
-  ]
+  "compilerOptions": {
+    "allowSyntheticDefaultImports": true,
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+    "allowJs": true,
+    "maxNodeModuleJsDepth": 10
+  }
 }
