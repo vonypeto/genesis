@@ -3,6 +3,7 @@ import { fileURLToPath } from 'url';
 import commonjs from '@rollup/plugin-commonjs';
 import { nodeResolve } from '@rollup/plugin-node-resolve';
 import json from '@rollup/plugin-json';
+import replace from '@rollup/plugin-replace';
 import copy from 'rollup-plugin-copy';
 import { globSync } from 'glob';
 import fs from 'fs';
@@ -100,6 +101,10 @@ export default {
   output: {
     dir: './dist/agent',
     format: 'cjs',
+    preserveModules: false,
+  },
+  treeshake: {
+    moduleSideEffects: true,
   },
   external: [
     /node_modules/,
@@ -118,8 +123,15 @@ export default {
     '@nestjs/microservices',
   ],
   plugins: [
+    replace({
+      preventAssignment: true,
+      'process.env.NODE_ENV': JSON.stringify(
+        process.env.NODE_ENV || 'production'
+      ),
+    }),
     nodeResolve({
       preferBuiltins: true,
+      extensions: ['.ts', '.js', '.json'],
     }),
     swc3({
       tsconfig: absolutePath('tsconfig.base.json'),
@@ -136,9 +148,20 @@ export default {
         },
         target: 'es2021',
         externalHelpers: true,
+        keepClassNames: true,
+      },
+      module: {
+        type: 'commonjs',
+        strict: false,
+        strictMode: true,
+        lazy: false,
+        noInterop: false,
       },
     }),
-    commonjs(),
+    commonjs({
+      extensions: ['.js', '.ts'],
+      transformMixedEsModules: true,
+    }),
     json(),
     copy({
       targets: [

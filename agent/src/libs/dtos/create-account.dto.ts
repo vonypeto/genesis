@@ -1,5 +1,7 @@
+import { AccountStatus } from '../../features/account-model/repositories/account.repository';
 import {
   IsEmail,
+  IsEnum,
   IsNotEmpty,
   IsOptional,
   IsString,
@@ -18,8 +20,12 @@ export class CreateAccountDto {
 
   @IsString()
   @IsNotEmpty()
-  @MinLength(6)
+  @MinLength(8)
   password!: string;
+
+  @IsEnum(AccountStatus)
+  @IsOptional()
+  status?: AccountStatus;
 
   @IsString()
   @IsOptional()
@@ -32,7 +38,4 @@ export class CreateAccountDto {
   @IsString()
   @IsOptional()
   phoneNumber?: string;
-
-  @IsOptional()
-  metadata?: Record<string, any>;
 }
