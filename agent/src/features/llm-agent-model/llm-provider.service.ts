@@ -67,16 +67,19 @@ export class LLMProviderService {
         }
       };
 
-      if (useCircuitBreaker) {
-        return await this.circuitBreaker.execute(config.provider, executeCall);
-      } else {
+      if (!useCircuitBreaker) {
         return await executeCall();
       }
+
+      return await this.circuitBreaker.execute(config.provider, executeCall);
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : String(error);
+
       const errorStack = error instanceof Error ? error.stack : undefined;
+
       this.logger.error(`LLM call failed: ${errorMessage}`, errorStack);
+
       throw new Error(`LLM call failed: ${errorMessage}`);
     }
   }

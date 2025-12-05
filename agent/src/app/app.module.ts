@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, OnModuleInit } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { AppController } from './controllers/app.controller';
 import { AppService } from './app.service';
@@ -6,6 +6,9 @@ import { ConfigModule, ConfigService } from '@genesis/config';
 import { AccountModule } from '../features/account-model/account.module';
 import { LLMAgentModule } from '../features/llm-agent-model/llm-agent.module';
 import { AccountController } from './controllers/account.controller';
+import { AgentController } from './controllers/agent.controller';
+import { RateLimiterService } from '@genesis/rate-limiter';
+import { RedisService } from '@genesis/redis';
 
 @Module({
   imports: [
@@ -29,7 +32,18 @@ import { AccountController } from './controllers/account.controller';
     AccountModule,
     LLMAgentModule,
   ],
-  controllers: [AppController, AccountController],
-  providers: [AppService],
+  controllers: [AppController, AccountController, AgentController],
+  providers: [AppService, RedisService, RateLimiterService],
 })
-export class AppModule {}
+export class AppModule implements OnModuleInit {
+  constructor(
+    private readonly redisService: RedisService,
+    private readonly rateLimiterService: RateLimiterService
+  ) {}
+
+  onModuleInit() {
+    const redisClient = this.redisService.getClient();
+    this.rateLimiterService.initialize(redisClient);
+    this.rateLimiterService.createProviderLimiters();
+  }
+}

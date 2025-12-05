@@ -1,4 +1,4 @@
-export interface CreateRunRequest {
+export type CreateRunRequest = {
   prompts: string[];
   brands: string[];
   models: { model: string; provider: string }[];
@@ -11,4 +11,4 @@ export interface CreateRunRequest {
     rateLimitPerSecond?: number;
     enableCircuitBreaker?: boolean;
   };
-}
+};
