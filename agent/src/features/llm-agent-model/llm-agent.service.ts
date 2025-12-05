@@ -66,14 +66,7 @@ export class LLMAgentService {
     notes?: string;
     idempotencyKey?: string;
     config?: Partial<
-      Pick<
-        Run['config'],
-        | 'concurrencyLimit'
-        | 'retryAttempts'
-        | 'timeout'
-        | 'rateLimitPerSecond'
-        | 'enableCircuitBreaker'
-      >
+      Pick<Run['config'], 'concurrencyLimit' | 'retryAttempts' | 'timeout'>
     >;
   }): Promise<{ run: Run | null; isNew: boolean }> {
     const startTime = Date.now();
@@ -133,8 +126,6 @@ export class LLMAgentService {
         concurrencyLimit: input.config?.concurrencyLimit ?? 5,
         retryAttempts: input.config?.retryAttempts ?? 3,
         timeout: input.config?.timeout ?? 30000,
-        rateLimitPerSecond: input.config?.rateLimitPerSecond,
-        enableCircuitBreaker: input.config?.enableCircuitBreaker !== false,
       },
     });
 
@@ -160,7 +151,6 @@ export class LLMAgentService {
             model,
             data.config.retryAttempts || 3,
             data.config.timeout || 30000,
-            data.config.enableCircuitBreaker !== false,
             latencies
           );
           totalTokens += tokens;
@@ -343,7 +333,7 @@ export class LLMAgentService {
     modelConfig: { model: string; provider: string },
     maxRetries: number,
     timeout: number,
-    useCircuitBreaker: boolean,
+
     latencies: number[]
   ): Promise<number> {
     for (let retryCount = 0; retryCount <= maxRetries; retryCount++) {
@@ -357,7 +347,7 @@ export class LLMAgentService {
               model: modelConfig.model,
               provider: modelConfig.provider,
               timeout,
-              useCircuitBreaker,
+              maxRetries,
             })
         );
 

@@ -27,8 +27,6 @@ export type Run = {
     concurrencyLimit: number;
     retryAttempts: number;
     timeout: number;
-    rateLimitPerSecond?: number;
-    enableCircuitBreaker?: boolean;
   };
   metrics?: {
     totalDurationMs?: number;
@@ -67,7 +65,6 @@ export function RunRepositoryFactory(connection: Connection): RunRepository {
         retryAttempts: { type: Number, default: 3 },
         timeout: { type: Number, default: 30000 },
         rateLimitPerSecond: Number,
-        enableCircuitBreaker: { type: Boolean, default: true },
       },
       metrics: {
         totalDurationMs: Number,

@@ -9,185 +9,189 @@ import { LLMProvider } from './libs/types';
 @Injectable()
 export class LLMProviderService {
   private readonly logger = new Logger(LLMProviderService.name);
+
   private openai?: OpenAI;
   private anthropic?: Anthropic;
 
   constructor(
-    private readonly configService: ConfigService,
+    private readonly config: ConfigService,
     private readonly circuitBreaker: CircuitBreakerService
   ) {
-    const openaiKey = this.configService.getString('OPENAI_API_KEY', {
+    this.initProviders();
+  }
+
+  /** Initialize and register LLM providers + circuit breakers */
+  private initProviders() {
+    const openaiKey = this.config.getString('OPENAI_API_KEY', {
       optional: true,
     });
-    const anthropicKey = this.configService.getString('ANTHROPIC_API_KEY', {
+    const anthropicKey = this.config.getString('ANTHROPIC_API_KEY', {
       optional: true,
     });
 
     if (openaiKey) {
-      this.openai = new OpenAI({
-        apiKey: openaiKey,
-      });
-
-      this.circuitBreaker.registerCircuit(LLMProvider.OPENAI, {
-        failureThreshold: 5,
-        successThreshold: 2,
-        timeout: 60000,
-      });
+      this.openai = new OpenAI({ apiKey: openaiKey });
+      this.registerBreaker(LLMProvider.OPENAI);
     }
 
     if (anthropicKey) {
-      this.anthropic = new Anthropic({
-        apiKey: anthropicKey,
-      });
-
-      this.circuitBreaker.registerCircuit(LLMProvider.ANTHROPIC, {
-        failureThreshold: 5,
-        successThreshold: 2,
-        timeout: 60000,
-      });
+      this.anthropic = new Anthropic({ apiKey: anthropicKey });
+      this.registerBreaker(LLMProvider.ANTHROPIC);
     }
   }
 
-  async callLLM(
-    prompt: string,
-    config: LLMProviderConfig
-  ): Promise<LLMResponse> {
-    const startTime = Date.now();
-    const useCircuitBreaker = config.useCircuitBreaker !== false;
+  private registerBreaker(provider: LLMProvider) {
+    this.circuitBreaker.registerCircuit(provider, {
+      failureThreshold: 5,
+      successThreshold: 2,
+      timeout: 60_000,
+    });
+  }
+
+  /** Helper: wraps any promise with AbortController timeout */
+  private async withTimeout<T>(
+    fn: (signal: AbortSignal) => Promise<T>,
+    ms: number
+  ): Promise<T> {
+    const controller = new AbortController();
+    const id = setTimeout(() => controller.abort(), ms);
 
     try {
-      const executeCall = async () => {
-        switch (config.provider) {
-          case LLMProvider.OPENAI:
-            return await this.callOpenAI(prompt, config, startTime);
-          case LLMProvider.ANTHROPIC:
-            return await this.callAnthropic(prompt, config, startTime);
-          default:
-            throw new Error(`Unsupported provider: ${config.provider}`);
-        }
-      };
-
-      if (!useCircuitBreaker) {
-        return await executeCall();
-      }
-
-      return await this.circuitBreaker.execute(config.provider, executeCall);
-    } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : String(error);
-
-      const errorStack = error instanceof Error ? error.stack : undefined;
-
-      this.logger.error(`LLM call failed: ${errorMessage}`, errorStack);
-
-      throw new Error(`LLM call failed: ${errorMessage}`);
+      return await fn(controller.signal);
+    } finally {
+      clearTimeout(id);
     }
   }
 
+  /** Main LLM dispatcher */
+  async callLLM(
+    prompt: string,
+    config: LLMProviderConfig,
+    role?: string
+  ): Promise<LLMResponse> {
+    const start = Date.now();
+    const useCB = config.useCircuitBreaker !== false;
+
+    const exec = async () => {
+      switch (config.provider) {
+        case LLMProvider.OPENAI:
+          return await this.callOpenAI(prompt, config, start);
+        case LLMProvider.ANTHROPIC:
+          return await this.callAnthropic(prompt, config, start);
+        default:
+          throw new Error(`Unsupported provider: ${config.provider}`);
+      }
+    };
+
+    try {
+      return useCB
+        ? await this.circuitBreaker.execute(config.provider, exec)
+        : await exec();
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      this.logger.error(
+        `LLM call failed: ${msg}`,
+        err instanceof Error ? err.stack : undefined
+      );
+      throw new Error(`LLM call failed: ${msg}`);
+    }
+  }
+
+  /** OpenAI call */
   private async callOpenAI(
     prompt: string,
     config: LLMProviderConfig,
-    startTime: number
+    start: number,
+    role?: string
   ): Promise<LLMResponse> {
     if (!this.openai) {
-      throw new Error('OpenAI API key not configured');
+      throw new Error('OpenAI provider is not configured.');
     }
 
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => {
-      controller.abort();
-    }, config.timeout || 30000);
+    const timeout = config.timeout ?? 30_000;
 
-    try {
-      const completion = await this.openai.chat.completions.create(
-        {
-          model: config.model,
-          messages: [{ role: 'user', content: prompt }],
-          max_tokens: 1000,
-        },
-        {
-          timeout: config.timeout || 30000,
-          signal: controller.signal,
-        }
-      );
+    const completion = await this.withTimeout(
+      (signal) =>
+        this.openai!.chat.completions.create(
+          {
+            model: config.model,
+            messages: [{ role: 'user', content: prompt }],
+            max_tokens: 1000,
+          },
+          { timeout, signal }
+        ),
+      timeout
+    );
 
-      const latencyMs = Date.now() - startTime;
+    const latencyMs = Date.now() - start;
 
-      return {
-        text: completion.choices[0]?.message?.content || '',
-        latencyMs,
-        tokenUsage: {
-          promptTokens: completion.usage?.prompt_tokens,
-          completionTokens: completion.usage?.completion_tokens,
-          totalTokens: completion.usage?.total_tokens,
-        },
-        metadata: {
-          model: completion.model,
-          finishReason: completion.choices[0]?.finish_reason,
-          id: completion.id,
-        },
-      };
-    } finally {
-      clearTimeout(timeoutId);
-    }
+    return {
+      text: completion.choices[0]?.message?.content ?? '',
+      latencyMs,
+      tokenUsage: {
+        promptTokens: completion.usage?.prompt_tokens,
+        completionTokens: completion.usage?.completion_tokens,
+        totalTokens: completion.usage?.total_tokens,
+      },
+      metadata: {
+        model: completion.model,
+        finishReason: completion.choices[0]?.finish_reason,
+        id: completion.id,
+      },
+    };
   }
 
+  /** Anthropic call */
   private async callAnthropic(
     prompt: string,
     config: LLMProviderConfig,
-    startTime: number
+    start: number
   ): Promise<LLMResponse> {
     if (!this.anthropic) {
-      throw new Error('Anthropic API key not configured');
+      throw new Error('Anthropic provider is not configured.');
     }
 
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => {
-      controller.abort();
-    }, config.timeout || 30000);
+    const timeout = config.timeout ?? 30_000;
 
-    try {
-      const message = await this.anthropic.messages.create(
-        {
-          model: config.model,
-          max_tokens: 1000,
-          messages: [{ role: 'user', content: prompt }],
-        },
-        {
-          timeout: config.timeout || 30000,
-          signal: controller.signal,
-        } as any
-      );
+    const message = await this.withTimeout(
+      (signal) =>
+        this.anthropic!.messages.create(
+          {
+            model: config.model,
+            max_tokens: 1000,
+            messages: [{ role: 'user', content: prompt }],
+          },
+          { timeout, signal } as any
+        ),
+      timeout
+    );
 
-      const latencyMs = Date.now() - startTime;
+    const latencyMs = Date.now() - start;
+    const first = message.content[0];
 
-      return {
-        text:
-          message.content[0]?.type === 'text' ? message.content[0].text : '',
-        latencyMs,
-        tokenUsage: {
-          promptTokens: message.usage?.input_tokens,
-          completionTokens: message.usage?.output_tokens,
-          totalTokens:
-            (message.usage?.input_tokens || 0) +
-            (message.usage?.output_tokens || 0),
-        },
-        metadata: {
-          model: message.model,
-          stopReason: message.stop_reason,
-          id: message.id,
-        },
-      };
-    } finally {
-      clearTimeout(timeoutId);
-    }
+    return {
+      text: first?.type === 'text' ? first.text : '',
+      latencyMs,
+      tokenUsage: {
+        promptTokens: message.usage?.input_tokens,
+        completionTokens: message.usage?.output_tokens,
+        totalTokens:
+          (message.usage?.input_tokens ?? 0) +
+          (message.usage?.output_tokens ?? 0),
+      },
+      metadata: {
+        model: message.model,
+        stopReason: message.stop_reason,
+        id: message.id,
+      },
+    };
   }
 
   getSupportedProviders(): string[] {
-    const providers: string[] = [];
-    if (this.openai) providers.push(LLMProvider.OPENAI);
-    if (this.anthropic) providers.push(LLMProvider.ANTHROPIC);
-    return providers;
+    return [
+      ...(this.openai ? [LLMProvider.OPENAI] : []),
+      ...(this.anthropic ? [LLMProvider.ANTHROPIC] : []),
+    ];
   }
 
   getDefaultModels(): Record<string, string[]> {
