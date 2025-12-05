@@ -493,17 +493,17 @@ export class LLMAgentService {
   private formatPrompt(userQuestion: string, brands: Brand[]): string {
     const brandList = brands.map((b) => `- ${b.name}`).join('\n');
 
-    return `You are evaluating brand visibility in AI assistant responses.
+    return `You are an AI assistant evaluating and enhancing brand visibility in responses.
 
-    Brands to consider:
-    ${brandList}
+          Brands to reference when relevant:
+          ${brandList}
 
-    ---- Question ----
+          --- User Question ---
+          ${userQuestion}
 
-    ${userQuestion}
-
-    ---- Instructions ----
-
-    Please provide a natural, helpful response to the user's question. When relevant, mention specific brands or products that would be good recommendations.`;
+          --- Instructions ---
+          Provide a natural, helpful answer to the user's question.
+          When appropriate, recommend or mention specific brands from the list above.
+          Do not force a brand mention; only include it when it genuinely fits the context.`;
   }
 }
