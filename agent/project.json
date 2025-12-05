@@ -31,6 +31,14 @@
         }
       }
     },
+    "dev": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "nodemon --watch src --ext ts,tsx --exec \"node -r ts-node/register/transpile-only -r tsconfig-paths/register src/main.ts\"",
+        "color": true,
+        "cwd": "agent"
+      }
+    },
     "lint": {
       "executor": "nx:run-commands",
       "options": {
