@@ -14,8 +14,10 @@ export interface Repository<T> {
   create(data: Partial<T>): Promise<T>;
   createMany(data: Partial<T>[]): Promise<T[]>;
   findAll(page?: number, limit?: number): Promise<T[]>;
-  findOne(filter: FilterQuery<T>): Promise<T | null>;
-  findById(id: string | Buffer): Promise<T | null>;
+
+  find(filter: FilterQuery<T>): Promise<T[]>;
+  findOne(filter: FilterQuery<T>): Promise<T>;
+  findById(id: string | Buffer): Promise<T>;
   update(
     id: string | Buffer,
     data: Partial<T>,

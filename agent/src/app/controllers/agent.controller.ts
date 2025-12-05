@@ -13,7 +13,11 @@ import { LLMAgentService } from '../../features/llm-agent-model/llm-agent.servic
 import { Run } from '../../features/llm-agent-model/repositories/run.repository';
 import { RedisService } from '@genesis/redis';
 import { RateLimiterService } from '@genesis/rate-limiter';
-import { CreateRunRequest, CreateRunResponse } from '../../libs/dtos';
+import {
+  CreateRunRequest,
+  CreateRunResponse,
+  RunSummaryResponse,
+} from '../../libs/dtos';
 
 @Controller()
 export class AgentController {
@@ -106,11 +110,31 @@ export class AgentController {
   }
 
   @Get('runs/:id/summary')
-  async getRunSummary(@Param('id') id: string): Promise<any> {
+  async getRunSummary(@Param('id') id: string): Promise<RunSummaryResponse> {
     this.logger.debug(`Fetching summary for run: ${id}`);
 
-    // TODO: Implement getRunSummary in LLMAgentService
-    throw new HttpException('Not implemented', HttpStatus.NOT_IMPLEMENTED);
+    try {
+      const summary = await this.llmAgentService.getRunSummary(id);
+      this.logger.debug(
+        `Retrieved summary for run ${id}: ${
+          summary.brandMetrics?.length || 0
+        } brands, ${summary.promptMetrics?.length || 0} prompts`
+      );
+      return summary;
+    } catch (error) {
+      if ((error as Error).message === 'Run not found') {
+        this.logger.warn(`Run not found for summary: ${id}`);
+        throw new HttpException('Run not found', HttpStatus.NOT_FOUND);
+      }
+      this.logger.error(
+        `Failed to get run summary for ${id}: ${(error as Error).message}`,
+        (error as Error).stack
+      );
+      throw new HttpException(
+        (error as Error).message || 'Failed to get run summary',
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
   }
 
   @Get('runs/:id/chat')

@@ -5,6 +5,7 @@ import {
   Document,
   FilterQuery,
   UpdateQuery,
+  Types,
 } from 'mongoose';
 import { Repository } from './types';
 
@@ -69,14 +70,19 @@ export class MongooseRepository<T> implements Repository<T> {
     return docs.map((doc) => this.mapDocument(doc));
   }
 
-  async findOne(filter: FilterQuery<T>): Promise<T | null> {
-    const doc = await this.model.findOne(filter).exec();
-    return doc ? this.mapDocument(doc) : null;
+  async find(filter: FilterQuery<T>): Promise<T[]> {
+    const docs = await this.model.find(this.normalizeFilter(filter)).exec();
+    return docs.map((doc) => this.mapDocument(doc));
   }
 
-  async findById(id: string | Buffer): Promise<T | null> {
+  async findOne(filter: FilterQuery<T>): Promise<T> {
+    const doc = await this.model.findOne(this.normalizeFilter(filter)).exec();
+    return this.mapDocument(doc);
+  }
+
+  async findById(id: string | Buffer): Promise<T> {
     const doc = await this.model.findById(id).exec();
-    return doc ? this.mapDocument(doc) : null;
+    return this.mapDocument(doc);
   }
 
   async update(
@@ -108,7 +114,10 @@ export class MongooseRepository<T> implements Repository<T> {
   ): Promise<T | null> {
     try {
       const doc = await this.model
-        .findOneAndUpdate(filter, update, { new: true, ...options })
+        .findOneAndUpdate(this.normalizeFilter(filter), update, {
+          new: true,
+          ...options,
+        })
         .exec();
       if (!doc && !options?.upsert) {
         throw new Error(`Document matching filter not found`);
@@ -130,7 +139,7 @@ export class MongooseRepository<T> implements Repository<T> {
   ): Promise<{ modifiedCount: number; upsertedCount: number }> {
     try {
       const result = await this.model
-        .updateMany(filter, update, options)
+        .updateMany(this.normalizeFilter(filter), update, options)
         .exec();
       return {
         modifiedCount: result.modifiedCount,
@@ -163,7 +172,9 @@ export class MongooseRepository<T> implements Repository<T> {
 
   async deleteOne(filter: FilterQuery<T>): Promise<T | null> {
     try {
-      const doc = await this.model.findOneAndDelete(filter).exec();
+      const doc = await this.model
+        .findOneAndDelete(this.normalizeFilter(filter))
+        .exec();
       if (!doc) {
         throw new Error(`Document matching filter not found`);
       }
@@ -179,7 +190,9 @@ export class MongooseRepository<T> implements Repository<T> {
 
   async deleteMany(filter: FilterQuery<T>): Promise<{ deletedCount: number }> {
     try {
-      const result = await this.model.deleteMany(filter).exec();
+      const result = await this.model
+        .deleteMany(this.normalizeFilter(filter))
+        .exec();
       return { deletedCount: result.deletedCount };
     } catch (error) {
       throw new Error(
@@ -191,7 +204,10 @@ export class MongooseRepository<T> implements Repository<T> {
   }
 
   async exists(filter: FilterQuery<T>): Promise<boolean> {
-    const count = await this.model.countDocuments(filter).limit(1).exec();
+    const count = await this.model
+      .countDocuments(this.normalizeFilter(filter))
+      .limit(1)
+      .exec();
     return count > 0;
   }
 
@@ -200,14 +216,63 @@ export class MongooseRepository<T> implements Repository<T> {
   }
 
   async countWithFilter(filter: FilterQuery<T>): Promise<number> {
-    return this.model.countDocuments(filter).exec();
+    return this.model.countDocuments(this.normalizeFilter(filter)).exec();
   }
 
   async aggregate(pipeline: any[]): Promise<any[]> {
     return this.model.aggregate(pipeline).exec();
   }
 
-  protected mapDocument(doc: Document): T {
+  private normalizeFilter(filter: FilterQuery<T>): FilterQuery<T> {
+    if (!filter || typeof filter !== 'object') return filter;
+    const cloned: Record<string, unknown> = {
+      ...(filter as Record<string, unknown>),
+    };
+    if ('id' in cloned) {
+      const idVal = cloned['id'];
+      delete cloned['id'];
+      cloned['_id'] = this.normalizeIdOperator(idVal);
+    }
+    return cloned as FilterQuery<T>;
+  }
+
+  private normalizeIdOperator(value: unknown): unknown {
+    if (Array.isArray(value)) {
+      return value.map((v) => this.toObjectId(v));
+    }
+    if (value && typeof value === 'object') {
+      const inObj = value as Record<string, unknown>;
+      const outObj: Record<string, unknown> = {};
+      for (const [key, val] of Object.entries(inObj)) {
+        if (key === '$in' || key === '$nin') {
+          outObj[key] = Array.isArray(val)
+            ? (val as unknown[]).map((v) => this.toObjectId(v))
+            : val;
+        } else if (key === '$eq' || key === '$ne') {
+          outObj[key] = this.toObjectId(val);
+        } else {
+          outObj[key] = val;
+        }
+      }
+      return outObj;
+    }
+    return this.toObjectId(value);
+  }
+
+  private toObjectId(value: unknown): unknown {
+    if (typeof value === 'string' && /^[a-fA-F0-9]{24}$/.test(value)) {
+      return new Types.ObjectId(value);
+    }
+    if (value instanceof Buffer) {
+      return new Types.ObjectId(value);
+    }
+    return value;
+  }
+
+  protected mapDocument(doc: Document | null): T {
+    if (!doc) {
+      return null as unknown as T;
+    }
     const obj = doc.toObject();
 
     if (obj._id) {
