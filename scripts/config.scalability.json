@@ -1,0 +1,183 @@
+{
+  "description": "Example configurations demonstrating scalability features",
+  "runs": [
+    {
+      "name": "Small Run - Default Settings",
+      "prompts": [
+        "What is the best payment processor?",
+        "Which CRM should I use?"
+      ],
+      "brands": ["Stripe", "PayPal", "Salesforce"],
+      "models": [{ "model": "gpt-4o-mini", "provider": "openai" }],
+      "notes": "Basic run with default settings (concurrency: 5, retries: 3)"
+    },
+
+    {
+      "name": "Medium Run - With Idempotency",
+      "prompts": [
+        "Best project management tools for teams",
+        "Top email marketing platforms",
+        "Leading analytics solutions"
+      ],
+      "brands": ["Asana", "Monday.com", "Mailchimp", "Google Analytics"],
+      "models": [
+        { "model": "gpt-4o-mini", "provider": "openai" },
+        { "model": "claude-3-5-haiku-20241022", "provider": "anthropic" }
+      ],
+      "idempotencyKey": "campaign-001-2024",
+      "notes": "Safe to retry - idempotency key prevents duplicates"
+    },
+
+    {
+      "name": "Large Run - High Concurrency",
+      "prompts": [
+        "What is Stripe?",
+        "Tell me about PayPal",
+        "Explain Square payments",
+        "What is Adyen?",
+        "Describe Braintree"
+      ],
+      "brands": [
+        "Stripe",
+        "PayPal",
+        "Square",
+        "Adyen",
+        "Braintree",
+        "Checkout.com",
+        "Klarna"
+      ],
+      "models": [
+        { "model": "gpt-4o-mini", "provider": "openai" },
+        { "model": "gpt-4o", "provider": "openai" },
+        { "model": "claude-3-5-haiku-20241022", "provider": "anthropic" }
+      ],
+      "config": {
+        "concurrencyLimit": 20,
+        "retryAttempts": 3,
+        "timeout": 30000,
+        "rateLimitPerSecond": 50,
+        "enableCircuitBreaker": true
+      },
+      "notes": "High throughput: 20 parallel requests, 50/sec rate limit"
+    },
+
+    {
+      "name": "Production Run - Full Configuration",
+      "prompts": [
+        "Compare payment processors for e-commerce",
+        "Best payment gateway for subscriptions",
+        "International payment solutions",
+        "Payment processing fees comparison",
+        "PCI compliance requirements"
+      ],
+      "brands": [
+        "Stripe",
+        "PayPal",
+        "Square",
+        "Adyen",
+        "Braintree",
+        "Authorize.net",
+        "Worldpay"
+      ],
+      "models": [
+        { "model": "gpt-4o-mini", "provider": "openai" },
+        { "model": "gpt-4o", "provider": "openai" },
+        { "model": "claude-3-5-sonnet-20241022", "provider": "anthropic" },
+        { "model": "claude-3-5-haiku-20241022", "provider": "anthropic" }
+      ],
+      "idempotencyKey": "production-batch-001",
+      "config": {
+        "concurrencyLimit": 15,
+        "retryAttempts": 5,
+        "timeout": 45000,
+        "rateLimitPerSecond": 30,
+        "enableCircuitBreaker": true
+      },
+      "notes": "Production-ready: idempotency, circuit breaker, aggressive retries"
+    },
+
+    {
+      "name": "Conservative Run - Safe Settings",
+      "prompts": ["What is HubSpot?", "Describe Salesforce CRM"],
+      "brands": ["HubSpot", "Salesforce"],
+      "models": [{ "model": "gpt-4o-mini", "provider": "openai" }],
+      "config": {
+        "concurrencyLimit": 2,
+        "retryAttempts": 2,
+        "timeout": 20000,
+        "enableCircuitBreaker": true
+      },
+      "notes": "Conservative: low concurrency, short timeout, circuit breaker on"
+    },
+
+    {
+      "name": "Stress Test - 50 Prompts x 2 Models",
+      "prompts": [
+        "Prompt 1: Payment processing",
+        "Prompt 2: E-commerce platforms",
+        "Prompt 3: Marketing automation",
+        "Prompt 4: Analytics tools",
+        "Prompt 5: CRM systems",
+        "Prompt 6: Project management",
+        "Prompt 7: Communication tools",
+        "Prompt 8: HR software",
+        "Prompt 9: Accounting systems",
+        "Prompt 10: Inventory management",
+        "Prompt 11: Customer support",
+        "Prompt 12: Email marketing",
+        "Prompt 13: Social media tools",
+        "Prompt 14: SEO platforms",
+        "Prompt 15: Content management",
+        "Prompt 16: Video conferencing",
+        "Prompt 17: File storage",
+        "Prompt 18: Password managers",
+        "Prompt 19: Design tools",
+        "Prompt 20: Development platforms",
+        "Prompt 21: Testing frameworks",
+        "Prompt 22: CI/CD tools",
+        "Prompt 23: Monitoring systems",
+        "Prompt 24: Security software",
+        "Prompt 25: Database systems",
+        "Prompt 26: Cloud platforms",
+        "Prompt 27: Container orchestration",
+        "Prompt 28: API gateways",
+        "Prompt 29: Message queues",
+        "Prompt 30: Cache systems",
+        "Prompt 31: Load balancers",
+        "Prompt 32: CDN services",
+        "Prompt 33: DNS providers",
+        "Prompt 34: SSL certificates",
+        "Prompt 35: Backup solutions",
+        "Prompt 36: Disaster recovery",
+        "Prompt 37: Compliance tools",
+        "Prompt 38: Legal software",
+        "Prompt 39: Time tracking",
+        "Prompt 40: Expense management",
+        "Prompt 41: Invoice systems",
+        "Prompt 42: Payroll software",
+        "Prompt 43: Benefits platforms",
+        "Prompt 44: Recruiting tools",
+        "Prompt 45: Training systems",
+        "Prompt 46: Documentation tools",
+        "Prompt 47: Wiki platforms",
+        "Prompt 48: Knowledge bases",
+        "Prompt 49: Forum software",
+        "Prompt 50: Community platforms"
+      ],
+      "brands": ["Stripe", "PayPal", "Salesforce", "HubSpot"],
+      "models": [
+        { "model": "gpt-4o-mini", "provider": "openai" },
+        { "model": "claude-3-5-haiku-20241022", "provider": "anthropic" }
+      ],
+      "idempotencyKey": "stress-test-001",
+      "config": {
+        "concurrencyLimit": 25,
+        "retryAttempts": 3,
+        "timeout": 30000,
+        "rateLimitPerSecond": 50,
+        "enableCircuitBreaker": true
+      },
+      "notes": "Stress test: 100 total requests (50 prompts × 2 models). Tests concurrency, rate limiting, circuit breaker under load."
+    }
+  ]
+}
