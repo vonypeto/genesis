@@ -1,8 +1,11 @@
-import { LLMProvider } from '../../features/llm-agent-model/libs/types';
+import {
+  LLMProvider,
+  LLMModel,
+} from '../../features/llm-agent-model/libs/types';
 
 export interface LLMProviderConfig {
-  model: string;
-  provider: LLMProvider | string;
+  model: LLMModel;
+  provider: LLMProvider;
   timeout?: number;
   maxRetries?: number;
   useCircuitBreaker?: boolean;

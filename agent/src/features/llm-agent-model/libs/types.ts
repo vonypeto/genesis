@@ -3,13 +3,64 @@ export enum LLMProvider {
   ANTHROPIC = 'anthropic',
 }
 
-export const CostPerToken: Record<string, number> = {
-  'gpt-4o-mini': 0.00000015,
-  'gpt-4o': 0.000005,
-  'gpt-3.5-turbo': 0.0000005,
-  'claude-3-5-sonnet-20241022': 0.000003,
-  'claude-3-5-haiku-20241022': 0.0000008,
+export enum OpenAIModel {
+  GPT_4O = 'gpt-4o',
+  GPT_4O_MINI = 'gpt-4o-mini',
+  GPT_4_TURBO = 'gpt-4-turbo',
+  GPT_4 = 'gpt-4',
+  GPT_3_5_TURBO = 'gpt-3.5-turbo',
+}
+
+export enum AnthropicModel {
+  CLAUDE_3_5_SONNET = 'claude-3-5-sonnet-20241022',
+  CLAUDE_3_5_HAIKU = 'claude-3-5-haiku-20241022',
+  CLAUDE_3_OPUS = 'claude-3-opus-20240229',
+  CLAUDE_3_SONNET = 'claude-3-sonnet-20240229',
+  CLAUDE_3_HAIKU = 'claude-3-haiku-20240307',
+}
+
+export type LLMModel = OpenAIModel | AnthropicModel;
+
+export const CostPerToken: Record<LLMModel, number> = {
+  [OpenAIModel.GPT_4O]: 0.000005,
+  [OpenAIModel.GPT_4O_MINI]: 0.00000015,
+  [OpenAIModel.GPT_4_TURBO]: 0.00001,
+  [OpenAIModel.GPT_4]: 0.00003,
+  [OpenAIModel.GPT_3_5_TURBO]: 0.0000005,
+  [AnthropicModel.CLAUDE_3_5_SONNET]: 0.000003,
+  [AnthropicModel.CLAUDE_3_5_HAIKU]: 0.0000008,
+  [AnthropicModel.CLAUDE_3_OPUS]: 0.000015,
+  [AnthropicModel.CLAUDE_3_SONNET]: 0.000003,
+  [AnthropicModel.CLAUDE_3_HAIKU]: 0.00000025,
 };
+
+// Helper to validate model belongs to provider
+export const ModelToProvider: Record<LLMModel, LLMProvider> = {
+  [OpenAIModel.GPT_4O]: LLMProvider.OPENAI,
+  [OpenAIModel.GPT_4O_MINI]: LLMProvider.OPENAI,
+  [OpenAIModel.GPT_4_TURBO]: LLMProvider.OPENAI,
+  [OpenAIModel.GPT_4]: LLMProvider.OPENAI,
+  [OpenAIModel.GPT_3_5_TURBO]: LLMProvider.OPENAI,
+  [AnthropicModel.CLAUDE_3_5_SONNET]: LLMProvider.ANTHROPIC,
+  [AnthropicModel.CLAUDE_3_5_HAIKU]: LLMProvider.ANTHROPIC,
+  [AnthropicModel.CLAUDE_3_OPUS]: LLMProvider.ANTHROPIC,
+  [AnthropicModel.CLAUDE_3_SONNET]: LLMProvider.ANTHROPIC,
+  [AnthropicModel.CLAUDE_3_HAIKU]: LLMProvider.ANTHROPIC,
+};
+
+export function isValidModelForProvider(
+  model: string,
+  provider: LLMProvider
+): boolean {
+  const modelEnum = model as LLMModel;
+  return ModelToProvider[modelEnum] === provider;
+}
+
+export function getModelsForProvider(provider: LLMProvider): LLMModel[] {
+  return Object.entries(ModelToProvider)
+    .filter(([, p]) => p === provider)
+    .map(([model]) => model as LLMModel);
+}
 
 // Strict types for transformation
 export type Row = {

@@ -273,18 +273,6 @@ importers:
 
   agent: {}
 
-  packages/async-event-module:
-    dependencies:
-      kafkajs:
-        specifier: ^2.2.4
-        version: 2.2.4
-
-  packages/async-event-module.bak:
-    dependencies:
-      kafkajs:
-        specifier: ^2.2.4
-        version: 2.2.4
-
   packages/nestjs-circuit-breaker-module: {}
 
   packages/nestjs-config-module: {}
