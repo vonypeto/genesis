@@ -15,6 +15,7 @@ import { Account } from '../../features/account-model/repositories/account.repos
 import { CreateAccountDto } from '../../libs/dtos';
 import { AsyncEventDispatcherService } from '@genesis/async-event-module';
 import R from 'ramda';
+import { Buffer } from 'buffer';
 import { Types, Schema } from 'mongoose';
 import { delay } from 'rxjs';
 
@@ -28,21 +29,22 @@ export class AccountController {
   @Post()
   @HttpCode(HttpStatus.CREATED)
   async create(@Body() input: CreateAccountDto): Promise<boolean> {
-    await delay(10000);
     await this.dispatcher.dispatch(
       ['agent'],
       {
-        id: new Types.ObjectId(),
+        id: Buffer.from(new Types.ObjectId().toHexString(), 'hex'),
         type: 'MemberAccountCreated',
         payload: {
           ...R.pick(['email'], input),
         },
         timestamp: new Date(),
-      } as any,
+      },
       {
         category: 'HIGH',
+        delay: 5000,
       }
     );
+
     return true;
     // return this.accountService.create(input);
   }
