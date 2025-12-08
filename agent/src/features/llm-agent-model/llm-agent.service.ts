@@ -22,6 +22,8 @@ import {
   BrandMetric,
   ByPrompt,
   CostPerToken,
+  LLMModel,
+  LLMProvider,
   PromptMetric,
   Row,
 } from './libs/types';
@@ -62,7 +64,7 @@ export class LLMAgentService {
   async createRun(input: {
     prompts: string[];
     brands: string[];
-    models: Array<{ provider: string; model: string }>;
+    models: Array<{ provider: LLMProvider; model: LLMModel }>;
     notes?: string;
     idempotencyKey?: string;
     config?: Partial<
@@ -330,7 +332,7 @@ export class LLMAgentService {
     runId: string,
     prompt: Prompt,
     brands: Brand[],
-    modelConfig: { model: string; provider: string },
+    modelConfig: { model: LLMModel; provider: LLMProvider },
     maxRetries: number,
     timeout: number,
 
