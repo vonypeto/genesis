@@ -5,5 +5,10 @@
     "esModuleInterop": true,
     "resolveJsonModule": true,
     "types": ["node", "jest"]
-  }
+  },
+  "references": [
+    {
+      "path": "../packages/nestjs-config-module"
+    }
+  ]
 }

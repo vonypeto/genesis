@@ -16,6 +16,7 @@ import { CreateAccountDto } from '../../libs/dtos';
 import { AsyncEventDispatcherService } from '@genesis/async-event-module';
 import R from 'ramda';
 import { Types, Schema } from 'mongoose';
+import { delay } from 'rxjs';
 
 @Controller('accounts')
 export class AccountController {
@@ -27,6 +28,7 @@ export class AccountController {
   @Post()
   @HttpCode(HttpStatus.CREATED)
   async create(@Body() input: CreateAccountDto): Promise<boolean> {
+    await delay(10000);
     await this.dispatcher.dispatch(
       ['agent'],
       {

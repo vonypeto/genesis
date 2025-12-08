@@ -4,9 +4,9 @@
     {
       "type": "node",
       "request": "launch",
-      "name": "Debug @llm-visibility-mono/agent with Nx",
+      "name": "Debug @genesis/agent with Nx",
       "runtimeExecutable": "pnpm exec",
-      "runtimeArgs": ["nx", "serve", "@llm-visibility-mono/agent"],
+      "runtimeArgs": ["nx", "serve", "@genesis/agent"],
       "env": {
         "NODE_OPTIONS": "--inspect=9229"
       },

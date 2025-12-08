@@ -1,5 +1,5 @@
 {
-  "name": "@llm-visibility-mono/agent",
+  "name": "@genesis/agent",
   "$schema": "../node_modules/nx/schemas/project-schema.json",
   "sourceRoot": "agent/src",
   "projectType": "application",

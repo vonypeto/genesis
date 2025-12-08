@@ -1,5 +1,5 @@
 {
-  "name": "@llm-visibility-mono/agent",
+  "name": "@genesis/agent",
   "version": "0.0.1",
   "private": true,
   "nx": {
@@ -63,15 +63,15 @@
           "build"
         ],
         "options": {
-          "buildTarget": "@llm-visibility-mono/agent:build",
+          "buildTarget": "@genesis/agent:build",
           "runBuildTargetDependencies": false
         },
         "configurations": {
           "development": {
-            "buildTarget": "@llm-visibility-mono/agent:build:development"
+            "buildTarget": "@genesis/agent:build:development"
           },
           "production": {
-            "buildTarget": "@llm-visibility-mono/agent:build:production"
+            "buildTarget": "@genesis/agent:build:production"
           }
         }
       },

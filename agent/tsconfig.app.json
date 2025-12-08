@@ -16,6 +16,27 @@
   "include": ["src/**/*.ts"],
   "references": [
     {
+      "path": "../packages/postgresql-repository/tsconfig.lib.json"
+    },
+    {
+      "path": "../packages/nestjs-circuit-breaker-module/tsconfig.lib.json"
+    },
+    {
+      "path": "../packages/repository/tsconfig.lib.json"
+    },
+    {
+      "path": "../packages/async-event-module"
+    },
+    {
+      "path": "../packages/nestjs-postgres-module/tsconfig.lib.json"
+    },
+    {
+      "path": "../packages/nestjs-redis-module"
+    },
+    {
+      "path": "../packages/nestjs-rate-limiter-module/tsconfig.lib.json"
+    },
+    {
       "path": "../packages/nestjs-config-module/tsconfig.lib.json"
     }
   ]

@@ -83,7 +83,7 @@ function generatePackageJSON() {
         absolutePath('dist/agent/package.json'),
         JSON.stringify(
           {
-            name: '@llm-visibility-mono/agent',
+            name: '@genesis/agent',
             version: packageJson.version,
             main: 'agent/src/main.js',
             dependencies: externalDependencies,

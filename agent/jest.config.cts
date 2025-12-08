@@ -10,7 +10,7 @@ const swcJestConfig = JSON.parse(
 swcJestConfig.swcrc = false;
 
 module.exports = {
-  displayName: '@llm-visibility-mono/agent',
+  displayName: '@genesis/agent',
   preset: '../jest.preset.js',
   testEnvironment: 'node',
   transform: {

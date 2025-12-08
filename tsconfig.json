@@ -8,5 +8,10 @@
     "resolveJsonModule": true,
     "allowJs": true,
     "maxNodeModuleJsDepth": 10
-  }
+  },
+  "references": [
+    {
+      "path": "./packages/nestjs-config-module"
+    }
+  ]
 }
