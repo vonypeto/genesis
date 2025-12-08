@@ -19,6 +19,7 @@ curl -X GET http://localhost:3000/api/
 ```bash
 curl -X POST http://localhost:3000/api/accounts \
   -H "Content-Type: application/json" \
+  -H "request-id: 1231231" \
   -d '{
     "email": "user@example.com",
     "username": "johndoe",
@@ -48,6 +49,7 @@ curl -X GET "http://localhost:3000/api/accounts?page=2&limit=20"
 ```bash
 curl -X POST http://localhost:3000/api/postgres-accounts \
   -H "Content-Type: application/json" \
+  -H "request-id: 1231231" \
   -d '{
     "email": "pguser@example.com",
     "username": "janedoe",
@@ -82,6 +84,7 @@ curl -X GET "http://localhost:3000/api/postgres-accounts?page=1&limit=5"
 ```bash
 curl -X POST http://localhost:3000/api/runs \
   -H "Content-Type: application/json" \
+  -H "request-id: 1231231" \
   -d '{
     "prompts": ["What is AI?", "Explain machine learning"],
     "brands": ["OpenAI", "Anthropic", "Google"],
@@ -106,6 +109,7 @@ curl -X POST http://localhost:3000/api/runs \
 ```bash
 curl -X POST http://localhost:3000/api/runs \
   -H "Content-Type: application/json" \
+  -H "request-id: 1231231" \
   -d '{
     "prompts": ["What is AI?"],
     "brands": ["OpenAI"],

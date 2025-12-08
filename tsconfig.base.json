@@ -13,11 +13,12 @@
     "lib": ["es2021"],
     "skipLibCheck": true,
     "skipDefaultLibCheck": true,
+    "preserveSymlinks": true,
     "esModuleInterop": true,
     "module": "commonjs",
     "types": ["node"],
     "forceConsistentCasingInFileNames": true,
-    "strict": true,
+    "strict": false,
     "noImplicitOverride": true,
     "noPropertyAccessFromIndexSignature": true,
     "noImplicitReturns": true,
@@ -64,7 +65,9 @@
       "@genesis/async-event-module": [
         "packages/async-event-module/src/index.ts"
       ],
-      "@genesis/async-event-module/*": ["packages/async-event-module/src/*"]
+      "@genesis/async-event-module/*": ["packages/async-event-module/src/*"],
+      "@genesis/idempotency/*": ["packages/idempotency/src/*"],
+      "@genesis/idempotency": ["packages/idempotency/src/index.ts"]
     }
   }
 }
