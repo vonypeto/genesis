@@ -14,6 +14,8 @@ import { PostgresAccountController } from './controllers/postgres-account.contro
 import { PostgresModule } from '@genesis/postgres';
 import fs from 'fs';
 import path from 'path';
+import { AsyncEventDispatcherModule } from '@genesis/async-event-module';
+import { Logger } from '@nestjs/common';
 
 @Module({
   imports: [
@@ -32,6 +34,55 @@ import path from 'path';
         serverSelectionTimeoutMS: 30000,
         autoIndex: config.getString('NODE_ENV') !== 'production',
       }),
+      inject: [ConfigService],
+    }),
+
+    AsyncEventDispatcherModule.forRootAsync({
+      useFactory: (...args: unknown[]) => {
+        const config = args[0] as ConfigService;
+        return {
+          id: 'genesis-app',
+          kafka: {
+            brokers: (
+              config.getString('KAFKA_BROKERS', { optional: true }) ||
+              'localhost:9092'
+            )
+              .split(',')
+              .map((b) => b.trim())
+              .filter(Boolean),
+            transactionTimeout: 15_000,
+          },
+          redis: {
+            host: (
+              config.getString('DATA_REDIS_ENDPOINT', { optional: true }) ||
+              '127.0.0.1:6379'
+            ).split(':')[0],
+            port: parseInt(
+              (
+                config.getString('DATA_REDIS_ENDPOINT', {
+                  optional: true,
+                }) || '127.0.0.1:6379'
+              ).split(':')[1],
+              10
+            ),
+          },
+          categories: [
+            {
+              name: 'HIGH',
+              allocation: 3,
+            },
+            {
+              name: 'LOW',
+              allocation: 1,
+            },
+            {
+              name: 'LOW_SLOW',
+              allocation: 1,
+            },
+          ],
+          logger: new Logger('agent, async-event-dispatcher'),
+        };
+      },
       inject: [ConfigService],
     }),
     PostgresModule.forRootAsync({

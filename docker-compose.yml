@@ -1,6 +1,31 @@
-version: "3.8"
-
 services:
+  redpanda:
+    image: docker.redpanda.com/redpandadata/redpanda:latest
+    container_name: local-redpanda
+    command:
+      - redpanda
+      - start
+      - --overprovisioned
+      - --smp=1
+      - --memory=512M
+      - --node-id=0
+      - --check=false
+      - --set redpanda.enable_transactions=true
+      - --set redpanda.enable_idempotence=true
+    ports:
+      - "9092:9092"
+      - "9644:9644"
+    environment:
+      REDPANDA_AUTO_CREATE_TOPICS: "true"
+
+  redis:
+    image: redis:7-alpine
+    container_name: local-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
   postgres:
     image: postgres:16-alpine
     container_name: local-postgres
@@ -34,3 +59,4 @@ services:
 
 volumes:
   postgres_data:
+  redis_data:

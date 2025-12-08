@@ -13,15 +13,36 @@ import {
 import { AccountService } from '../../features/account-model/account.service';
 import { Account } from '../../features/account-model/repositories/account.repository';
 import { CreateAccountDto } from '../../libs/dtos';
+import { AsyncEventDispatcherService } from '@genesis/async-event-module';
+import R from 'ramda';
+import { Types, Schema } from 'mongoose';
 
 @Controller('accounts')
 export class AccountController {
-  constructor(private readonly accountService: AccountService) {}
+  constructor(
+    private readonly accountService: AccountService,
+    private readonly dispatcher: AsyncEventDispatcherService
+  ) {}
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
-  async create(@Body() createAccountDto: CreateAccountDto): Promise<Account> {
-    return this.accountService.create(createAccountDto);
+  async create(@Body() input: CreateAccountDto): Promise<boolean> {
+    await this.dispatcher.dispatch(
+      ['agent'],
+      {
+        id: new Types.ObjectId(),
+        type: 'MemberAccountCreated',
+        payload: {
+          ...R.pick(['email'], input),
+        },
+        timestamp: new Date(),
+      } as any,
+      {
+        category: 'HIGH',
+      }
+    );
+    return true;
+    // return this.accountService.create(input);
   }
 
   @Get()
