@@ -1,4 +1,9 @@
-import { Module, OnModuleInit } from '@nestjs/common';
+import {
+  Inject,
+  Module,
+  OnApplicationShutdown,
+  OnModuleInit,
+} from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { AppController } from './controllers/app.controller';
 import { AppService } from './app.service';
@@ -16,6 +21,11 @@ import fs from 'fs';
 import path from 'path';
 import { AsyncEventDispatcherModule } from '@genesis/async-event-module';
 import { Logger } from '@nestjs/common';
+import { Tokens } from '../libs/tokens';
+import R from 'ramda';
+import Redis, { Cluster } from 'ioredis';
+import Redlock from 'redlock';
+import { Joser } from '@scaleforge/joser';
 
 @Module({
   imports: [
@@ -126,14 +136,72 @@ import { Logger } from '@nestjs/common';
     AgentController,
     PostgresAccountController,
   ],
-  providers: [AppService, RedisService, RateLimiterService, RateLimiterService],
+  providers: [
+    AppService,
+    RedisService,
+    RateLimiterService,
+    RateLimiterService,
+    {
+      provide: Tokens.Redis,
+      useFactory: async (config: ConfigService) => {
+        const redis = new Redis(config.getString('REDIS_ENDPOINT'), {
+          enableReadyCheck: true,
+          lazyConnect: true,
+        });
+
+        await redis.connect();
+
+        return redis;
+      },
+      inject: [ConfigService],
+    },
+    {
+      provide: Tokens.Redlock,
+      useFactory: async (config: ConfigService) => {
+        const clients = await Promise.all(
+          R.map(async (endpoint) => {
+            const client = new Redis(endpoint, {
+              lazyConnect: true,
+            });
+
+            await client.connect();
+
+            return client;
+          }, config.getString(`REDLOCK_REDIS_ENDPOINTS`).split(','))
+        );
+
+        const redlock = new Redlock(clients, {
+          automaticExtensionThreshold: 250,
+          retryCount: 10,
+          driftFactor: 0.1,
+          retryDelay: 200,
+          retryJitter: 200,
+        });
+
+        return redlock;
+      },
+      inject: [ConfigService],
+    },
+    {
+      provide: Joser,
+      useFactory: () => new Joser(),
+    },
+  ],
 })
-export class AppModule implements OnModuleInit {
+export class AppModule implements OnModuleInit, OnApplicationShutdown {
   constructor(
     private readonly redisService: RedisService,
-    private readonly rateLimiterService: RateLimiterService
+    private readonly rateLimiterService: RateLimiterService,
+    @Inject(Tokens.Redis)
+    private readonly redis: Cluster,
+    @Inject(Tokens.Redlock)
+    private readonly redlock: Redlock
   ) {}
+  async onApplicationShutdown() {
+    await this.redis.quit().catch((err) => Logger.warn(err));
 
+    await this.redlock.quit().catch((err) => Logger.warn(err));
+  }
   onModuleInit() {
     const redisClient = this.redisService.getClient();
     this.rateLimiterService.initialize(redisClient);

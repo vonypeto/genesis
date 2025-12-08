@@ -1,0 +1,57 @@
+{
+  "name": "idempotency",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "packages/idempotency/src",
+  "projectType": "library",
+  "tags": [],
+  "targets": {
+    "lint": {
+      "executor": "nx:run-commands",
+      "options": {
+        "commands": [
+          "oxlint --fix --tsconfig=./tsconfig.json src/"
+        ],
+        "cwd": "packages/idempotency"
+      }
+    },
+    "bundle": {
+      "executor": "@nx/rollup:rollup",
+      "outputs": [
+        "{options.outputPath}"
+      ],
+      "options": {
+        "main": "packages/idempotency/src/index.ts",
+        "outputPath": "dist/packages/idempotency",
+        "tsConfig": "packages/idempotency/tsconfig.lib.json",
+        "project": "packages/idempotency/package.json",
+        "assets": [
+          {
+            "input": "packages/idempotency",
+            "glob": ".npmrc",
+            "output": "."
+          },
+          {
+            "input": "packages/idempotency",
+            "glob": "README.md",
+            "output": "."
+          }
+        ],
+        "compiler": "tsc"
+      }
+    },
+    "publish": {
+      "dependsOn": [
+        "bundle"
+      ],
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "dist/packages/idempotency",
+        "commands": [
+          {
+            "command": "npm publish"
+          }
+        ]
+      }
+    }
+  }
+}

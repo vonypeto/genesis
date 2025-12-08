@@ -122,9 +122,7 @@ export class LLMAgentService {
       contentHash: this.generateContentHash(input),
       config: {
         brands: input.brands,
-        models: R
-          ? R.map((m: any) => `${m.provider}:${m.model}`, input.models)
-          : input.models.map((m) => `${m.provider}:${m.model}`),
+        models: R.map((m) => `${m.provider}:${m.model}`, input.models),
         concurrencyLimit: input.config?.concurrencyLimit ?? 5,
         retryAttempts: input.config?.retryAttempts ?? 3,
         timeout: input.config?.timeout ?? 30000,
@@ -370,43 +368,45 @@ export class LLMAgentService {
         await this.analyzeBrandMentions(response, brands, llmResponse.text);
 
         return llmResponse.tokenUsage?.totalTokens || 0;
-      } catch (error: any) {
-        const msg = error?.message ?? '';
-        const rateLimited = this.isRateLimitError(msg);
-        const status = rateLimited
-          ? ResponseStatus.RATE_LIMITED
-          : ResponseStatus.FAILED;
+      } catch (error) {
+        if (error instanceof Error) {
+          const msg = error.message;
+          const rateLimited = this.isRateLimitError(msg);
+          const status = rateLimited
+            ? ResponseStatus.RATE_LIMITED
+            : ResponseStatus.FAILED;
 
-        const finalAttempt = retryCount >= maxRetries || rateLimited;
-        if (finalAttempt) {
-          await this.responseRepository.create({
-            runId,
-            promptId: prompt.id,
-            modelName: modelConfig.model,
-            provider: modelConfig.provider,
-            latencyMs: 0,
-            rawText: '',
-            status,
-            errorMessage: rateLimited
-              ? `Rate limit exceeded: ${msg}`
-              : msg || 'Unknown error',
-            retryCount,
-          });
-          this.logger[rateLimited ? 'warn' : 'error'](
-            `${status}: ${modelConfig.provider}:${modelConfig.model} – ${msg}`
+          const finalAttempt = retryCount >= maxRetries || rateLimited;
+          if (finalAttempt) {
+            await this.responseRepository.create({
+              runId,
+              promptId: prompt.id,
+              modelName: modelConfig.model,
+              provider: modelConfig.provider,
+              latencyMs: 0,
+              rawText: '',
+              status,
+              errorMessage: rateLimited
+                ? `Rate limit exceeded: ${msg}`
+                : msg || 'Unknown error',
+              retryCount,
+            });
+            this.logger[rateLimited ? 'warn' : 'error'](
+              `${status}: ${modelConfig.provider}:${modelConfig.model} – ${msg}`
+            );
+            return 0;
+          }
+
+          const delayMs =
+            Math.min(1000 * Math.pow(2, retryCount), 10000) +
+            Math.floor(Math.random() * 500);
+          this.logger.warn(
+            `Retry ${retryCount + 1}/${maxRetries}: ${modelConfig.provider}:${
+              modelConfig.model
+            } (next in ${delayMs}ms)`
           );
-          return 0;
+          await new Promise((response) => setTimeout(response, delayMs));
         }
-
-        const delayMs =
-          Math.min(1000 * Math.pow(2, retryCount), 10000) +
-          Math.floor(Math.random() * 500);
-        this.logger.warn(
-          `Retry ${retryCount + 1}/${maxRetries}: ${modelConfig.provider}:${
-            modelConfig.model
-          } (next in ${delayMs}ms)`
-        );
-        await new Promise((response) => setTimeout(response, delayMs));
       }
     }
 

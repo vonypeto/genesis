@@ -9,7 +9,10 @@ import {
   Query,
   HttpCode,
   HttpStatus,
+  Req,
 } from '@nestjs/common';
+import { Request } from 'express';
+import { Inject } from '@nestjs/common';
 import { AccountService } from '../../features/account-model/account.service';
 import { Account } from '../../features/account-model/repositories/account.repository';
 import { CreateAccountDto } from '../../libs/dtos';
@@ -18,17 +21,30 @@ import R from 'ramda';
 import { Buffer } from 'buffer';
 import { Types, Schema } from 'mongoose';
 import { delay } from 'rxjs';
+import { Idempotency } from '../interceptor/idempotency';
+import Redis from 'ioredis';
+import Redlock from 'redlock';
+import { Joser } from '@scaleforge/joser';
+import { Tokens } from '../../libs/tokens';
+import { AppRequest } from '../../libs/types';
 
 @Controller('accounts')
 export class AccountController {
   constructor(
     private readonly accountService: AccountService,
-    private readonly dispatcher: AsyncEventDispatcherService
+    private readonly dispatcher: AsyncEventDispatcherService,
+    @Inject(Tokens.Redis)
+    private readonly redis: Redis,
+    @Inject(Tokens.Redlock)
+    private readonly redlock: Redlock,
+    private readonly joser: Joser
   ) {}
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
+  @Idempotency((input: CreateAccountDto) => <string>input['email'])
   async create(@Body() input: CreateAccountDto): Promise<boolean> {
+    console.log('AccountController.create called with input:', input);
     await this.dispatcher.dispatch(
       ['agent'],
       {
