@@ -5,10 +5,7 @@ import { ObjectId } from '@genesis/object-id';
 
 export type Brand = { id: ObjectId; name: string; runId: ObjectId };
 
-const BrandsSchema = {
-  name: String,
-  runId: String,
-};
+const BrandsSchema = { id: Buffer, name: String, runId: Buffer };
 
 export type BrandsRepository = Repository<Brand>;
 

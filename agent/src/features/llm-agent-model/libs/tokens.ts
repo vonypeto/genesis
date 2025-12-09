@@ -1,7 +1,7 @@
 export const Tokens = {
-  RunsRepository: Symbol('RunsRepositoryV2'),
-  PromptsRepository: Symbol('PromptsRepositoryV2'),
-  BrandsRepository: Symbol('BrandsRepositoryV2'),
-  ResponsesRepository: Symbol('ResponsesRepositoryV2'),
-  MentionsRepository: Symbol('MentionsRepositoryV2'),
+  RunsRepository: Symbol('RunsRepository'),
+  PromptsRepository: Symbol('PromptsRepository'),
+  BrandsRepository: Symbol('BrandsRepository'),
+  ResponsesRepository: Symbol('ResponsesRepository'),
+  MentionsRepository: Symbol('MentionsRepository'),
 };

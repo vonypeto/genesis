@@ -285,9 +285,9 @@ export class MongoStoreAdapter implements StoreAdapter {
       'aggregate version must be greater than 0'
     );
 
-    const AggregateModel = <Model<{ _id: Buffer; version: number; timestamp: Date; final?: boolean }>>(
-      await this.model('Aggregate')
-    );
+    const AggregateModel = <
+      Model<{ _id: Buffer; version: number; timestamp: Date; final?: boolean }>
+    >(<unknown>await this.model('Aggregate'));
 
     const aggregate = await AggregateModel.findOne(
       {

@@ -1,7 +1,6 @@
 import { Repository, FilterQuery, UpdateQuery } from './types';
-import { Pool, PoolClient } from 'pg';
+import { Pool } from 'pg';
 import { ObjectId as GenObjectId, ObjectId } from '@genesis/object-id';
-import { v4 as uuidv4 } from 'uuid';
 
 export class PostgresRepository<T extends { id?: string | Buffer | ObjectId }>
   implements Repository<T>
@@ -31,19 +30,26 @@ export class PostgresRepository<T extends { id?: string | Buffer | ObjectId }>
 
       if (!tableExistsRes.rows[0].exists) {
         // Create table
+
+        const hasId = Object.keys(this.schemaDefinition).includes('id');
+        let idColumn = '"id" BYTEA PRIMARY KEY';
+        if (hasId) {
+          // Use the type from schemaDefinition for id
+          const idType = this.schemaDefinition['id'];
+          idColumn = `"id" ${this.mapTypeToPostgres(idType)} PRIMARY KEY`;
+        }
         const columns = Object.entries(this.schemaDefinition)
+          .filter(([key]) => key !== 'id') // filter out id if present
           .map(([key, type]) => {
             const pgType = this.mapTypeToPostgres(type);
             return `"${key}" ${pgType}`;
           })
           .join(', ');
 
-        // Always add id if not present in definition (though interface expects generic T)
-        // We'll require 'id' field to be primary key
         const createSql = `CREATE TABLE "${this.tableName}" (
-          "id" TEXT PRIMARY KEY, 
-          ${columns},
-          "created_at" TIMESTAMP DEFAULT NOW(),
+          ${idColumn},
+          ${columns}
+          ${columns ? ',' : ''} "created_at" TIMESTAMP DEFAULT NOW(),
           "updated_at" TIMESTAMP DEFAULT NOW()
         );`;
 
@@ -80,6 +86,13 @@ export class PostgresRepository<T extends { id?: string | Buffer | ObjectId }>
     if (type === Boolean || (type.type && type.type === Boolean))
       return 'BOOLEAN';
     if (type === Date || (type.type && type.type === Date)) return 'TIMESTAMP';
+
+    if (
+      type === Buffer ||
+      (typeof Buffer !== 'undefined' && type && type.name === 'Buffer')
+    )
+      return 'BYTEA';
+    if (type && (type.name === 'ObjectId' || type === ObjectId)) return 'BYTEA';
     return 'JSONB'; // Fallback for complex objects/arrays
   }
 
@@ -88,28 +101,29 @@ export class PostgresRepository<T extends { id?: string | Buffer | ObjectId }>
     const now = new Date();
     const dataWithoutId = { ...data };
     if ('id' in dataWithoutId) delete dataWithoutId.id;
-    const keys = [
-      'id',
-      ...Object.keys(dataWithoutId),
-      'created_at',
-      'updated_at',
-    ];
-    const values = [
-      this.toIdString(id),
-      ...Object.values(dataWithoutId),
-      now,
-      now,
-    ];
-
-    // remove keys that are not in schema (simple protection) + id/timestamps
-    // For now assume data keys are valid columns for simplicity or mismatched columns will throw
+    // Only store id as Buffer, all other ObjectId as string
+    const safeData = Object.fromEntries(
+      Object.entries(dataWithoutId).map(([k, v]) => [
+        k,
+        v instanceof ObjectId ? v.toString() : v,
+      ])
+    );
+    const idValue = id instanceof ObjectId ? id.buffer : id;
+    const keys = ['id', ...Object.keys(safeData), 'created_at', 'updated_at'];
+    const values = [idValue, ...Object.values(safeData), now, now];
 
     const placeholders = values.map((_, i) => `$${i + 1}`).join(', ');
     const columns = keys.map((k) => `"${k}"`).join(', ');
 
-    const query = `INSERT INTO "${this.tableName}" (${columns}) VALUES (${placeholders}) RETURNING *;`;
-
+    const query = `INSERT INTO "${this.tableName}" (${columns}) VALUES (${placeholders}) ON CONFLICT (id) DO NOTHING RETURNING *;`;
+    console.log('Insert Query:', query, 'Values:', values);
     const res = await this.pool.query(query, values);
+    // If nothing was inserted (duplicate), try to fetch the existing row
+    if (res.rows.length === 0) {
+      const existing = await this.findById(idValue);
+      if (existing) return existing;
+      throw new Error('Failed to insert or find existing row');
+    }
     return this.mapRow(res.rows[0]);
   }
 
@@ -144,10 +158,12 @@ export class PostgresRepository<T extends { id?: string | Buffer | ObjectId }>
     return this.mapRow(res.rows[0]);
   }
 
-  async findById(id: string | Buffer): Promise<T> {
+  async findById(id: string | Buffer | ObjectId): Promise<T> {
+    // id as Buffer for BYTEA, else string
+    const idValue = id instanceof ObjectId ? id.buffer : id;
     const res = await this.pool.query(
       `SELECT * FROM "${this.tableName}" WHERE id = $1;`,
-      [this.toIdString(id)]
+      [idValue]
     );
     return this.mapRow(res.rows[0]);
   }
@@ -160,14 +176,22 @@ export class PostgresRepository<T extends { id?: string | Buffer | ObjectId }>
     const keys = Object.keys(data);
     if (keys.length === 0) return this.findById(id);
 
+    // Only store id as Buffer, all other ObjectId as string
+    const safeData = Object.fromEntries(
+      Object.entries(data).map(([k, v]) => [
+        k,
+        v instanceof ObjectId ? v.toString() : v,
+      ])
+    );
+    const idValue = id instanceof ObjectId ? id.buffer : id;
     const setClause = keys.map((k, i) => `"${k}" = $${i + 2}`).join(', ');
-    const values = [this.toIdString(id), ...Object.values(data)];
+    const values = [idValue, ...Object.values(safeData)];
 
     const query = `UPDATE "${this.tableName}" SET ${setClause}, updated_at = NOW() WHERE id = $1 RETURNING *;`;
     const res = await this.pool.query(query, values);
 
     if (res.rowCount === 0 && options?.upsert) {
-      return this.create({ ...data, id: this.toIdString(id) } as Partial<T>);
+      return this.create({ ...safeData, id: idValue } as Partial<T>);
     }
 
     return res.rows[0] ? this.mapRow(res.rows[0]) : null;
@@ -197,7 +221,32 @@ export class PostgresRepository<T extends { id?: string | Buffer | ObjectId }>
       return null;
     }
 
-    return this.update(this.toIdString(found.id)!, dataToUpdate, options);
+    // Use Buffer for id if schema expects BYTEA
+    const idType = this.schemaDefinition['id'];
+    const isBytea = this.mapTypeToPostgres(idType) === 'BYTEA';
+    let updateId = found.id;
+    if (isBytea) {
+      if (updateId instanceof ObjectId) updateId = updateId.buffer;
+      else if (typeof updateId === 'string')
+        updateId = ObjectId.from(updateId).buffer;
+    }
+    return this.update(
+      isBytea
+        ? updateId instanceof ObjectId
+          ? updateId.buffer
+          : typeof updateId === 'string'
+          ? ObjectId.from(updateId).buffer
+          : updateId
+        : updateId instanceof ObjectId
+        ? updateId.toString()
+        : Buffer.isBuffer(updateId)
+        ? ObjectId.from(updateId).toString()
+        : typeof updateId === 'string'
+        ? updateId
+        : String(updateId),
+      dataToUpdate,
+      options
+    );
   }
 
   async updateMany(
@@ -219,7 +268,7 @@ export class PostgresRepository<T extends { id?: string | Buffer | ObjectId }>
   async delete(id: string | Buffer): Promise<T | null> {
     const res = await this.pool.query(
       `DELETE FROM "${this.tableName}" WHERE id = $1 RETURNING *;`,
-      [this.toIdString(id)]
+      [id]
     );
     return res.rows[0] ? this.mapRow(res.rows[0]) : null;
   }
@@ -266,10 +315,6 @@ export class PostgresRepository<T extends { id?: string | Buffer | ObjectId }>
 
   private mapRow(row: any): T {
     if (!row) return null as any;
-    // Map created_at -> createdAt if needed, assuming T has camelCase
-    // For now returning row as is, assuming keys match
-    // Actually, postgres returns snake_case if we don't quote, but we quoted column creation
-    // so they should be case sensitive.
     return row as T;
   }
 
@@ -293,27 +338,46 @@ export class PostgresRepository<T extends { id?: string | Buffer | ObjectId }>
         continue;
       }
 
+      // Special handling for id: use Buffer for BYTEA columns
       if (key === 'id') {
+        // Determine if id column is BYTEA
+        const idType = this.schemaDefinition['id'];
+        const isBytea = this.mapTypeToPostgres(idType) === 'BYTEA';
+        const toDbId = (v: any) => {
+          if (isBytea) {
+            if (v instanceof ObjectId) return v.buffer;
+            if (Buffer.isBuffer(v)) return v;
+            // Accept string: convert to ObjectId then buffer
+            if (typeof v === 'string') return ObjectId.from(v).buffer;
+            return v;
+          } else {
+            // Fallback to string
+            if (v instanceof ObjectId) return v.toString();
+            if (Buffer.isBuffer(v)) return ObjectId.from(v).toString();
+            return typeof v === 'string' ? v : String(v);
+          }
+        };
+
         if (value && typeof value === 'object' && !Array.isArray(value)) {
           const opObj = value as any;
           if (opObj.$in && Array.isArray(opObj.$in)) {
-            const list = opObj.$in.map((v: any) => this.toIdString(v));
+            const list = opObj.$in.map((v: any) => toDbId(v));
             conditions.push(`"id" = ANY($${idx++})`);
             values.push(list);
           } else if (opObj.$eq !== undefined) {
             conditions.push(`"id" = $${idx++}`);
-            values.push(this.toIdString(opObj.$eq));
+            values.push(toDbId(opObj.$eq));
           } else if (opObj.$ne !== undefined) {
             conditions.push(`"id" <> $${idx++}`);
-            values.push(this.toIdString(opObj.$ne));
+            values.push(toDbId(opObj.$ne));
           } else {
             // fallback equality if unrecognized operator
             conditions.push(`"id" = $${idx++}`);
-            values.push(this.toIdString(opObj));
+            values.push(toDbId(opObj));
           }
         } else {
           conditions.push(`"id" = $${idx++}`);
-          values.push(this.toIdString(value));
+          values.push(toDbId(value));
         }
       } else if (
         typeof value === 'object' &&

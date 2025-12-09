@@ -73,3 +73,14 @@ export type MemberAccountCreatedAsyncEvent = AsyncEvent<
     email: string;
   }
 >;
+
+export type StartRunCreatedAsyncEvent = AsyncEvent<
+  'StartRunCreated',
+  {
+    id: ObjectId;
+    prompts: string[];
+    brands: string[];
+    models: string[];
+    notes?: string;
+  }
+>;

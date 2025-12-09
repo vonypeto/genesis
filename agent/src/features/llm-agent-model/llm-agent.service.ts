@@ -15,6 +15,7 @@ import { LLMModel, LLMProvider, RunStatus } from './libs/types';
 import { LLMProviderService } from './llm-provider.service';
 
 type StartRunInput = {
+  id: ObjectId;
   prompts: string[];
   brands: string[];
   models: string[];
@@ -55,18 +56,17 @@ export class LLMAgentService {
   ) {}
 
   async startRun(input: StartRunInput): Promise<{ runId: string }> {
-    const runId = ObjectId.generate();
-
-    const run = await this.runs.create({
-      id: runId,
+    const runObjectId = input.id;
+    await this.runs.create({
+      id: input.id,
       notes: input.notes,
       totalPrompts: 0,
       failedPrompts: 0,
       status: RunStatus.PENDING,
     });
-
+    console.log(runObjectId);
     await this.runs.updateOne(
-      { id: run.id },
+      { id: runObjectId.buffer },
       { $set: { status: RunStatus.RUNNING } }
     );
 
@@ -74,8 +74,8 @@ export class LLMAgentService {
       input.prompts.map(
         async (promptText: string) =>
           await this.promptsRepo.updateOne(
-            { text: promptText, runId: run.id },
-            { $set: { text: promptText, runId: run.id } },
+            { text: promptText, runId: runObjectId.buffer },
+            { $set: { text: promptText, runId: runObjectId.buffer } },
             { upsert: true }
           )
       )
@@ -85,8 +85,8 @@ export class LLMAgentService {
       input.brands.map(
         async (brandName: string) =>
           await this.brandsRepo.updateOne(
-            { name: brandName, runId: run.id },
-            { $set: { name: brandName, runId: run.id } },
+            { name: brandName, runId: runObjectId.buffer },
+            { $set: { name: brandName, runId: runObjectId.buffer } },
             { upsert: true }
           )
       )
@@ -104,10 +104,7 @@ export class LLMAgentService {
         const modelName = (
           idx === -1 ? modelString : modelString.slice(idx + 1)
         ) as LLMModel;
-        const formattedPrompt = this.buildFormattedPrompt(
-          promptEntity.text,
-          input.brands
-        );
+        const formattedPrompt = this.buildFormattedPrompt(promptEntity.text);
 
         try {
           const result = await this.llmProvider.callLLM(formattedPrompt, {
@@ -135,7 +132,7 @@ export class LLMAgentService {
           }
 
           const responseEntity = await this.responsesRepo.create({
-            runId: run.id,
+            runId: runObjectId,
             promptId: promptEntity.id,
             model: modelString,
             latencyMs,
@@ -146,7 +143,7 @@ export class LLMAgentService {
           await this.recordMentions(responseEntity, brandEntities);
           totalPrompts++;
           this.logger.log(
-            `LLM response received for model: ${modelString} runId: ${run.id}`
+            `LLM response received for model: ${modelString} runId: ${runObjectId.toString()}`
           );
         } catch (error) {
           failedPrompts++;
@@ -160,13 +157,21 @@ export class LLMAgentService {
     }
 
     await this.runs.updateOne(
-      { id: run.id },
+      { id: runObjectId.buffer },
       { $set: { totalPrompts, failedPrompts, status: RunStatus.COMPLETED } }
     );
-    return { runId: run.id.toString('hex') };
+    return { runId: runObjectId.toString() };
   }
   public async getRunStatus(runId: string): Promise<{ status: string }> {
-    const run = await this.runs.findOne({ id: runId });
+    const objectId = ObjectId.from(runId);
+    console.log(
+      'getRunStatus ObjectId:',
+      objectId.toString(),
+      ObjectId.from(runId).buffer
+    );
+
+    const run = await this.runs.findOne({ id: ObjectId.from(runId).buffer });
+
     if (!run) {
       return { status: 'not_found' };
     }
@@ -193,8 +198,8 @@ export class LLMAgentService {
 
   async getRunSummary(runId: string): Promise<{ prompts: PromptSummary[] }> {
     const [responses, brands] = await Promise.all([
-      this.responsesRepo.find({ runId }),
-      this.brandsRepo.find({ runId }),
+      this.responsesRepo.find({ runId: ObjectId.from(runId).buffer }),
+      this.brandsRepo.find({ runId: ObjectId.from(runId).buffer }),
     ]);
 
     const configuredBrands = R.map(R.prop('name'), brands);
@@ -286,37 +291,40 @@ export class LLMAgentService {
     return { prompts: summaries };
   }
 
-  private buildFormattedPrompt(promptText: string, brands: string[]): string {
+  private buildFormattedPrompt(promptText: string): string {
     return `
-      You are an AI assistant analyzing brand visibility.
+    You are an AI assistant specializing in brand visibility analysis.
 
-      Task:
-      - Answer the user's question while emphasizing all brands provided.
-      - Mention each brand multiple times and compare them throughout the response.
+    Objective:
+    - Respond fully to the user's question while giving strong, repeated emphasis to all provided brands.
+    - Integrate every brand naturally throughout the answer, referencing them multiple times and comparing them directly.
 
-      Question:
-      ${promptText}
+    User Question:
+    ${promptText}
 
-      Instructions:
-      - Highlight each brand’s strengths, weaknesses, features, and best use cases.
-      - Provide specific comparisons and recommendations.
-      - Rank the brands and justify the ranking.
-      - Use the brands naturally but frequently.
+    Response Requirements:
+    - Discuss each brand’s strengths, weaknesses, features, differentiators, and ideal use cases.
+    - Provide clear, concrete comparisons and specific recommendations.
+    - Rank the brands from strongest to weakest and justify the ranking with evidence.
+    - Maintain a natural writing style while ensuring frequent brand mentions.
 
-      Output:
-      1. Full answer text.
-      2. JSON object on a new line with structure:
-      {
-        "brandMentions": { "BrandA": <count>, ... },
-        "mentionRate": { "BrandA": <rate>, ... },
-        "visibilityScore": { "BrandA": <score>, ... },
-        "ranking": ["BrandA", "BrandB", ...],
-        "summary": "Short summary of brand visibility."
-      }
-      Return only the JSON object, no markdown.
-      `;
+    Output Specification:
+    Produce two outputs in order:
+    1. A complete answer addressing the user's question.
+    2. On a new line, return a single JSON object with the format:
+    {
+      "brandMentions": { "BrandA": { "count": <number>, "percentage": <0-100> }, ... },
+      "mentionRate": { "BrandA": { "rate": <0-1>, "percentage": <0-100> }, ... },
+      "visibilityScore": { "BrandA": { "score": <0-100>, "percentage": <0-100> }, ... },
+      "ranking": ["BrandA", "BrandB", ...],
+      "summary": "Short summary of brand visibility."
+    }
+
+    Important:
+    - Do not add markdown, code fences, or extra commentary around the JSON.
+    - Return only the JSON object after the full answer text.
+  `;
   }
-
   private findBestMatch = (
     object: Record<string, number> | undefined,
     brand: string

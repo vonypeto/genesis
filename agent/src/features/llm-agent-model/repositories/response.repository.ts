@@ -15,8 +15,9 @@ export type Response = {
 };
 
 export const ResponsesSchema = {
-  runId: String,
-  promptId: String,
+  id: Buffer,
+  runId: Buffer,
+  promptId: Buffer,
   model: String,
   latencyMs: Number,
   rawText: String,

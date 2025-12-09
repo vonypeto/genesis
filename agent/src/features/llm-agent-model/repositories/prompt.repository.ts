@@ -5,10 +5,7 @@ import { ObjectId } from '@genesis/object-id';
 
 export type Prompt = { id: ObjectId; text: string; runId: ObjectId };
 
-export const PromptsSchema = {
-  text: String,
-  runId: String,
-};
+export const PromptsSchema = { id: Buffer, text: String, runId: Buffer };
 
 export type PromptsRepository = Repository<Prompt>;
 

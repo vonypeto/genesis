@@ -40,7 +40,7 @@ export class ObjectId {
     return this._buffer.compare(other._buffer);
   }
 
-  public static from(value: string | Buffer) {
+  public static from(value: string | Buffer | ObjectId) {
     if (value instanceof Buffer) return new ObjectId(value);
     return new ObjectId(Buffer.from(bs58.decode(value as string)));
   }

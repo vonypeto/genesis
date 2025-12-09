@@ -14,6 +14,7 @@ export type Run = {
 };
 
 export const RunsSchema = {
+  id: Buffer,
   notes: String,
   totalPrompts: Number,
   failedPrompts: Number,

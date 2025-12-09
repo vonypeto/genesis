@@ -12,8 +12,9 @@ export type Mention = {
 };
 
 export const MentionsSchema = {
-  responseId: String,
-  brandId: String,
+  id: Buffer,
+  responseId: Buffer,
+  brandId: Buffer,
   mentioned: Boolean,
   positionIndex: Number,
 };

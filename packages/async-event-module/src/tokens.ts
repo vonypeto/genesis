@@ -8,4 +8,6 @@ export const Tokens = {
   BullMQQueue: Symbol('BullMQQueue'),
   BullMQWorker: Symbol('BullMQWorker'),
   Redis: Symbol('Redis'),
+  Redlock: Symbol('Redlock'),
+  Joser: Symbol('Joser'),
 };

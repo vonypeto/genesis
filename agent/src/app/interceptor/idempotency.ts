@@ -6,7 +6,7 @@ import { idempotency } from '@genesis/idempotency';
 export function Idempotency(key: (...args: unknown[]) => string) {
   return function (_: unknown, __: string, descriptor: PropertyDescriptor) {
     const original = descriptor.value;
-    console.log('Idempotency decorator applied to method:', key);
+
     descriptor.value = async function (
       this: {
         redis: Redis;
