@@ -70,6 +70,7 @@
     "@swc/jest": "~0.2.38",
     "@types/bcrypt": "^5.0.0",
     "@types/jest": "^30.0.0",
+    "@types/mocha": "^10.0.10",
     "@types/mongoose": "^5.11.97",
     "@types/node": "20.19.9",
     "@types/ramda": "^0.31.1",

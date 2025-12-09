@@ -8,6 +8,7 @@ import {
   Types,
 } from 'mongoose';
 import { Repository } from './types';
+import { ObjectId } from '@genesis/object-id';
 
 export class MongooseRepository<T> implements Repository<T> {
   protected model: Model<any>;
@@ -34,7 +35,8 @@ export class MongooseRepository<T> implements Repository<T> {
 
   async create(data: Partial<T>): Promise<T> {
     try {
-      const doc = new this.model(data);
+      const payload = this.prepareData(data);
+      const doc = new this.model(payload);
       const saved = await doc.save();
       return this.mapDocument(saved);
     } catch (error) {
@@ -48,7 +50,8 @@ export class MongooseRepository<T> implements Repository<T> {
 
   async createMany(data: Partial<T>[]): Promise<T[]> {
     try {
-      const docs = await this.model.insertMany(data);
+      const payloads = data.map((d) => this.prepareData(d));
+      const docs = await this.model.insertMany(payloads);
       return docs.map((doc) => this.mapDocument(doc));
     } catch (error) {
       throw new Error(
@@ -81,7 +84,8 @@ export class MongooseRepository<T> implements Repository<T> {
   }
 
   async findById(id: string | Buffer): Promise<T> {
-    const doc = await this.model.findById(id).exec();
+    const normalizedId = this.toObjectId(id);
+    const doc = await this.model.findById(normalizedId as any).exec();
     return this.mapDocument(doc);
   }
 
@@ -91,8 +95,9 @@ export class MongooseRepository<T> implements Repository<T> {
     options?: { upsert?: boolean; new?: boolean; setDefaultsOnInsert?: boolean }
   ): Promise<T | null> {
     try {
+      const normalizedId = this.toObjectId(id);
       const doc = await this.model
-        .findByIdAndUpdate(id, data, { new: true, ...options })
+        .findByIdAndUpdate(normalizedId as any, data, { new: true, ...options })
         .exec();
       if (!doc && !options?.upsert) {
         throw new Error(`Document with id ${id} not found`);
@@ -156,7 +161,10 @@ export class MongooseRepository<T> implements Repository<T> {
 
   async delete(id: string | Buffer): Promise<T | null> {
     try {
-      const doc = await this.model.findByIdAndDelete(id).exec();
+      const normalizedId = this.toObjectId(id);
+      const doc = await this.model
+        .findByIdAndDelete(normalizedId as any)
+        .exec();
       if (!doc) {
         throw new Error(`Document with id ${id} not found`);
       }
@@ -237,6 +245,9 @@ export class MongooseRepository<T> implements Repository<T> {
   }
 
   private normalizeIdOperator(value: unknown): unknown {
+    if (value instanceof ObjectId) {
+      return value.buffer;
+    }
     if (Array.isArray(value)) {
       return value.map((v) => this.toObjectId(v));
     }
@@ -260,11 +271,25 @@ export class MongooseRepository<T> implements Repository<T> {
   }
 
   private toObjectId(value: unknown): unknown {
-    if (typeof value === 'string' && /^[a-fA-F0-9]{24}$/.test(value)) {
-      return new Types.ObjectId(value);
+    if (value instanceof ObjectId) {
+      return value.buffer;
+    }
+    if (typeof value === 'string') {
+      // Hex string for Mongo ObjectId
+      if (/^[a-fA-F0-9]{24}$/.test(value)) {
+        return new Types.ObjectId(value);
+      }
+      // Try base58 (genesis) id -> buffer
+      try {
+        const parsed = ObjectId.from(value as string);
+        return parsed.buffer;
+      } catch (_) {
+        // not a base58 id; fall through
+      }
     }
     if (value instanceof Buffer) {
-      return new Types.ObjectId(value);
+      // If 12 bytes, Mongoose can interpret as ObjectId; otherwise treat as Buffer (e.g., 16-byte genesis ID)
+      return value.length === 12 ? new Types.ObjectId(value) : value;
     }
     return value;
   }
@@ -275,10 +300,32 @@ export class MongooseRepository<T> implements Repository<T> {
     }
     const obj = doc.toObject();
 
-    if (obj._id) {
-      obj.id = obj._id;
+    if (obj._id !== undefined) {
+      // Convert to friendly id string
+      const rawId = obj._id;
+      if (rawId instanceof Types.ObjectId) {
+        obj.id = rawId.toHexString();
+      } else if (Buffer.isBuffer(rawId)) {
+        try {
+          obj.id = ObjectId.from(rawId).toString();
+        } catch (_) {
+          obj.id = rawId;
+        }
+      } else {
+        obj.id = rawId;
+      }
       delete obj._id;
     }
     return obj as T;
+  }
+
+  private prepareData(data: Partial<T>): Partial<T> {
+    const payload: any = { ...(data as any) };
+    if ('id' in payload && payload.id !== undefined) {
+      const normalized = this.toObjectId(payload.id);
+      delete payload.id;
+      payload._id = normalized;
+    }
+    return payload as Partial<T>;
   }
 }

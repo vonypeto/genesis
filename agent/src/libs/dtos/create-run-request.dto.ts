@@ -13,7 +13,5 @@ export type CreateRunRequest = {
     concurrencyLimit?: number;
     retryAttempts?: number;
     timeout?: number;
-    rateLimitPerSecond?: number;
-    enableCircuitBreaker?: boolean;
   };
 };

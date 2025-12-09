@@ -1,3 +1,4 @@
+import { ObjectId } from '@genesis/object-id';
 import { MongooseRepository, Repository } from '@genesis/repository';
 import { Connection, Schema } from 'mongoose';
 
@@ -9,7 +10,7 @@ export enum AccountStatus {
 }
 
 export type Account = {
-  id: string;
+  id: ObjectId;
   email: string;
   username: string;
   password: string;
@@ -40,6 +41,7 @@ export function AccountRepositoryFactory(
     connection,
     'Account',
     {
+      _id: Buffer,
       email: { type: String, required: true },
       username: { type: String, required: true },
       password: { type: String, required: true },

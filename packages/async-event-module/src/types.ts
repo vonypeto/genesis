@@ -1,4 +1,5 @@
 import { Logger } from '@nestjs/common';
+import { ObjectId } from '@genesis/object-id';
 
 export type AsyncEventDispatcherModuleOptions = {
   id: string;
@@ -53,7 +54,7 @@ export type AsyncEvent<
   TType extends string = string,
   TPayload extends Record<string, unknown> = Record<string, unknown>
 > = {
-  id: Buffer;
+  id: ObjectId;
   type: TType;
   payload: TPayload;
   opts?: { delay?: number; category?: 'LOW' | 'HIGH' };

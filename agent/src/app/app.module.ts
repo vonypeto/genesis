@@ -9,7 +9,6 @@ import { AppController } from './controllers/app.controller';
 import { AppService } from './app.service';
 import { ConfigModule, ConfigService } from '@genesis/config';
 import { AccountModule } from '../features/account-model/account.module';
-import { LLMAgentModule } from '../features/llm-agent-model/llm-agent.module';
 import { AccountController } from './controllers/account.controller';
 import { AgentController } from './controllers/agent.controller';
 import { RateLimiterService } from '@genesis/rate-limiter';
@@ -26,6 +25,7 @@ import R from 'ramda';
 import Redis, { Cluster } from 'ioredis';
 import Redlock from 'redlock';
 import { Joser } from '@scaleforge/joser';
+import { LLMAgentModule } from '../features/llm-agent-model/llm-agent.module';
 
 @Module({
   imports: [

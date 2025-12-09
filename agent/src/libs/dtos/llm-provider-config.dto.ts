@@ -8,5 +8,4 @@ export interface LLMProviderConfig {
   provider: LLMProvider;
   timeout?: number;
   maxRetries?: number;
-  useCircuitBreaker?: boolean;
 }

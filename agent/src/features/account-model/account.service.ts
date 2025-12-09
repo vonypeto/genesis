@@ -7,6 +7,7 @@ import {
   AccountStatus,
   CreateAccountInput,
 } from './repositories/account.repository';
+import { ObjectId } from '@genesis/object-id';
 
 @Injectable()
 export class AccountService {
@@ -30,15 +31,22 @@ export class AccountService {
     if (existingUsername) {
       throw new ConflictException('Username already exists');
     }
-
-    return this.accountRepository.create({
+    const datas = ObjectId.generate();
+    console.log(datas.toString());
+    const data = await this.accountRepository.create({
       ...input,
       status: input.status || AccountStatus.ACTIVE,
       isActive: true,
+      id: datas,
       metadata: {},
     });
+    console.log(await this.accountRepository.findOne({ id: datas }));
+    return data;
   }
   async findAll(page = 1, limit = 10): Promise<Account[]> {
     return this.accountRepository.findAll(page, limit);
+  }
+  async findById(id: ObjectId | Buffer) {
+    return this.accountRepository.findOne({ id: id });
   }
 }

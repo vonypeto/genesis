@@ -1,26 +1,21 @@
-import { MongooseRepository, Repository } from '@genesis/repository';
-import { Connection } from 'mongoose';
+import { Pool } from 'pg';
+import { PostgresRepository } from '@genesis/postgresql-repository';
+import { Repository } from '@genesis/repository';
+import { ObjectId } from '@genesis/object-id';
 
-export type Brand = {
-  id: string;
-  name: string;
-  aliases?: string[];
-  createdAt: Date;
-  updatedAt: Date;
+export type Brand = { id: ObjectId; name: string; runId: ObjectId };
+
+const BrandsSchema = {
+  name: String,
+  runId: String,
 };
 
-export type BrandRepository = Repository<Brand>;
+export type BrandsRepository = Repository<Brand>;
 
-export function BrandRepositoryFactory(
-  connection: Connection
-): BrandRepository {
-  return new MongooseRepository<Brand>(
-    connection,
-    'Brand',
-    {
-      name: { type: String, required: true },
-      aliases: [String],
-    },
-    [[{ name: 1 }, { unique: true }], [{ createdAt: -1 }]]
-  );
+export async function createBrandsRepository(
+  pool: Pool
+): Promise<Repository<Brand>> {
+  const repo = new PostgresRepository<Brand>(pool, 'brands', BrandsSchema);
+  await repo.initialize();
+  return repo;
 }

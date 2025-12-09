@@ -1,0 +1,1 @@
+{"root":["./src/index.ts","./src/async-event-dispatcher.module.ts","./src/async-event-dispatcher.service.ts","./src/async-event.module.ts","./src/decorators.ts","./src/dispatch.ts","./src/tokens.ts","./src/types.ts"],"errors":true,"version":"5.9.3"}

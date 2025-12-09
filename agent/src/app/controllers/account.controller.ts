@@ -27,6 +27,7 @@ import Redlock from 'redlock';
 import { Joser } from '@scaleforge/joser';
 import { Tokens } from '../../libs/tokens';
 import { AppRequest } from '../../libs/types';
+import { ObjectId } from '@genesis/object-id';
 
 @Controller('accounts')
 export class AccountController {
@@ -42,13 +43,17 @@ export class AccountController {
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
-  @Idempotency((input: CreateAccountDto) => <string>input['email'])
+  // @Idempotency((input: CreateAccountDto) => <string>input['email'])
   async create(@Body() input: CreateAccountDto): Promise<boolean> {
     console.log('AccountController.create called with input:', input);
+
+    console.log(
+      await this.accountService.findById(ObjectId.from('CVuTq153WeGxiH2WjXQwT'))
+    );
     await this.dispatcher.dispatch(
       ['agent'],
       {
-        id: Buffer.from(new Types.ObjectId().toHexString(), 'hex'),
+        id: ObjectId.generate(),
         type: 'MemberAccountCreated',
         payload: {
           ...R.pick(['email'], input),
@@ -61,8 +66,8 @@ export class AccountController {
       }
     );
 
+    // await this.accountService.create(input);
     return true;
-    // return this.accountService.create(input);
   }
 
   @Get()

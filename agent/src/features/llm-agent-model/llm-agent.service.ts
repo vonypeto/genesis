@@ -1,501 +1,342 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
-import * as crypto from 'crypto';
-import pLimit from 'p-limit';
-import R from 'ramda';
 import { Tokens } from './libs/tokens';
-import { Run, RunRepository, RunStatus } from './repositories/run.repository';
-import { Prompt, PromptRepository } from './repositories/prompt.repository';
-import { Brand, BrandRepository } from './repositories/brand.repository';
+
+import { RunsRepository } from './repositories/run.repository';
+import { PromptsRepository, Prompt } from './repositories/prompt.repository';
+import { BrandsRepository, Brand } from './repositories/brand.repository';
 import {
+  ResponsesRepository,
   Response,
-  ResponseRepository,
-  ResponseStatus,
 } from './repositories/response.repository';
-import {
-  BrandMention,
-  BrandMentionRepository,
-} from './repositories/brand-mention.repository';
+import { MentionsRepository } from './repositories/mention.repository';
+import { ObjectId } from '@genesis/object-id';
+import R from 'ramda';
+import { LLMModel, LLMProvider, RunStatus } from './libs/types';
 import { LLMProviderService } from './llm-provider.service';
-import { RateLimiterService } from '@genesis/rate-limiter';
-import { CreateRunRequest } from 'agent/src/libs/dtos';
-import {
-  BrandMetric,
-  ByPrompt,
-  CostPerToken,
-  LLMModel,
-  LLMProvider,
-  PromptMetric,
-  Row,
-} from './libs/types';
-import mongoose from 'mongoose';
+
+type StartRunInput = {
+  prompts: string[];
+  brands: string[];
+  models: string[];
+  notes?: string;
+};
+
+interface BrandMetrics {
+  brandMentions: Record<string, number>;
+  mentionRate?: Record<string, number>;
+  visibilityScore?: Record<string, number>;
+  ranking?: string[];
+  summary?: string;
+}
+
+interface PromptSummary {
+  prompt: string;
+  model: string;
+  answer: string;
+  brandMetrics: BrandMetrics;
+}
 
 @Injectable()
 export class LLMAgentService {
   private readonly logger = new Logger(LLMAgentService.name);
 
   constructor(
-    @Inject(Tokens.RunRepository)
-    private readonly runRepository: RunRepository,
-    @Inject(Tokens.PromptRepository)
-    private readonly promptRepository: PromptRepository,
-    @Inject(Tokens.BrandRepository)
-    private readonly brandRepository: BrandRepository,
-    @Inject(Tokens.ResponseRepository)
-    private readonly responseRepository: ResponseRepository,
-    @Inject(Tokens.BrandMentionRepository)
-    private readonly brandMentionRepository: BrandMentionRepository,
-    private readonly llmProvider: LLMProviderService,
-    private readonly rateLimiter: RateLimiterService
-  ) {
-    this.rateLimiter.createProviderLimiters();
-  }
+    @Inject(Tokens.RunsRepository)
+    private readonly runs: RunsRepository,
+    @Inject(Tokens.PromptsRepository)
+    private readonly promptsRepo: PromptsRepository,
+    @Inject(Tokens.BrandsRepository)
+    private readonly brandsRepo: BrandsRepository,
+    @Inject(Tokens.ResponsesRepository)
+    private readonly responsesRepo: ResponsesRepository,
+    @Inject(Tokens.MentionsRepository)
+    private readonly mentionsRepo: MentionsRepository,
+    private readonly llmProvider: LLMProviderService
+  ) {}
 
-  async listRuns(
-    page: number = 1,
-    limit: number = 10
-  ): Promise<{ data: Run[]; total: number }> {
-    const [data, total] = await Promise.all([
-      this.runRepository.findAll(page, limit),
-      this.runRepository.countAll(),
-    ]);
-    return { data, total };
-  }
+  async startRun(input: StartRunInput): Promise<{ runId: string }> {
+    const runId = ObjectId.generate();
 
-  async createRun(input: {
-    prompts: string[];
-    brands: string[];
-    models: Array<{ provider: LLMProvider; model: LLMModel }>;
-    notes?: string;
-    idempotencyKey?: string;
-    config?: Partial<
-      Pick<Run['config'], 'concurrencyLimit' | 'retryAttempts' | 'timeout'>
-    >;
-  }): Promise<{ run: Run | null; isNew: boolean }> {
-    const startTime = Date.now();
-    // First Idempotency
-    if (input.idempotencyKey) {
-      const existing = await this.runRepository.findOne({
-        idempotencyKey: input.idempotencyKey,
-      });
-      if (existing) return { run: existing, isNew: false };
-    }
-
-    const [promptResults, brandResults] = await Promise.all([
-      Promise.all(
-        input.prompts.map((text: string) =>
-          this.promptRepository.updateOne(
-            { text },
-            { $set: { text } },
-            { upsert: true, setDefaultsOnInsert: true }
-          )
-        )
-      ),
-      Promise.all(
-        input.brands.map((name: string) =>
-          this.brandRepository.updateOne(
-            { name },
-            { $set: { name } },
-            { upsert: true, setDefaultsOnInsert: true }
-          )
-        )
-      ),
-    ]);
-
-    const prompts = R.filter(Boolean, promptResults) as Prompt[];
-    const brands = R.filter(Boolean, brandResults) as Brand[];
-
-    if (prompts.length === 0) {
-      throw new Error('Failed to create or retrieve prompts');
-    }
-
-    if (brands.length === 0) {
-      throw new Error('Failed to create or retrieve brands');
-    }
-
-    const data = await this.runRepository.create({
+    const run = await this.runs.create({
+      id: runId,
       notes: input.notes,
-      status: RunStatus.PENDING,
-      totalPrompts: prompts.length * input.models.length,
-      completedPrompts: 0,
+      totalPrompts: 0,
       failedPrompts: 0,
-      idempotencyKey: input.idempotencyKey,
-      contentHash: this.generateContentHash(input),
-      config: {
-        brands: input.brands,
-        models: R.map((m) => `${m.provider}:${m.model}`, input.models),
-        concurrencyLimit: input.config?.concurrencyLimit ?? 5,
-        retryAttempts: input.config?.retryAttempts ?? 3,
-        timeout: input.config?.timeout ?? 30000,
-      },
+      status: RunStatus.PENDING,
     });
 
-    if (!data) {
-      throw new Error('Data not found');
-    }
-
-    this.logger.log(
-      `Run ${data.id} → ${prompts.length} prompts × ${input.models.length} models`
+    await this.runs.updateOne(
+      { id: run.id },
+      { $set: { status: RunStatus.RUNNING } }
     );
 
-    const limit = pLimit(data.config.concurrencyLimit || 5);
-    const latencies: number[] = [];
-    let totalTokens = 0;
-
-    const tasks = prompts.flatMap((prompt) =>
-      input.models.map((model) =>
-        limit(async () => {
-          const tokens = await this.processPromptModelPair(
-            data.id,
-            prompt,
-            brands,
-            model,
-            data.config.retryAttempts || 3,
-            data.config.timeout || 30000,
-            latencies
-          );
-          totalTokens += tokens;
-        })
+    const promptEntities = await Promise.all(
+      input.prompts.map(
+        async (promptText: string) =>
+          await this.promptsRepo.updateOne(
+            { text: promptText, runId: run.id },
+            { $set: { text: promptText, runId: run.id } },
+            { upsert: true }
+          )
       )
     );
 
-    await Promise.allSettled(tasks);
-
-    const duration = Date.now() - startTime;
-    const avgLatency =
-      latencies.length > 0
-        ? latencies.reduce((a, b) => a + b, 0) / latencies.length
-        : 0;
-
-    const responses = await this.responseRepository.find({ runId: data.id });
-    const successCount = responses.filter(
-      (r) => r.status === ResponseStatus.SUCCESS
-    ).length;
-    const failedCount = responses.filter(
-      (r) => r.status !== ResponseStatus.SUCCESS
-    ).length;
-    const avgCost =
-      input.models.reduce((sum, data) => {
-        return sum + (CostPerToken[data.model] || 0.000001);
-      }, 0) / input.models.length;
-
-    await this.runRepository.update(data.id, {
-      status:
-        failedCount === 0
-          ? RunStatus.COMPLETED
-          : failedCount < responses.length
-          ? RunStatus.PARTIAL
-          : RunStatus.FAILED,
-      completedPrompts: successCount,
-      failedPrompts: failedCount,
-      metrics: {
-        totalDurationMs: duration,
-        avgLatencyMs: Math.round(avgLatency),
-        totalTokensUsed: totalTokens,
-        estimatedCost: totalTokens * avgCost,
-      },
-    });
-    return { run: data, isNew: true };
-  }
-
-  async getRunSummary(runId: string) {
-    const run = await this.runRepository.findOne({
-      id: runId,
-    });
-    if (!run) throw new Error('Run not found');
-
-    const objectId = new mongoose.Types.ObjectId(runId);
-
-    const data = await this.brandMentionRepository.aggregate([
-      {
-        $lookup: {
-          from: 'responses',
-          localField: 'responseId',
-          foreignField: '_id',
-          as: 'response',
-        },
-      },
-      { $unwind: '$response' },
-      {
-        $match: {
-          $expr: {
-            $or: [
-              { $eq: ['$response.runId', objectId] },
-              { $eq: [{ $toString: '$response.runId' }, runId] },
-            ],
-          },
-        },
-      },
-      {
-        $lookup: {
-          from: 'brands',
-          localField: 'brandId',
-          foreignField: '_id',
-          as: 'brand',
-        },
-      },
-      { $unwind: '$brand' },
-      {
-        $lookup: {
-          from: 'prompts',
-          localField: 'response.promptId',
-          foreignField: '_id',
-          as: 'prompt',
-        },
-      },
-      { $unwind: '$prompt' },
-      {
-        $group: {
-          _id: {
-            brandId: '$brandId',
-            brandName: '$brand.name',
-            promptId: '$response.promptId',
-            promptText: '$prompt.text',
-            model: '$response.modelName',
-          },
-          mentioned: { $max: '$mentioned' },
-          totalMentions: { $sum: '$mentionCount' },
-          avgPosition: { $avg: '$positionIndex' },
-        },
-      },
-      { $sort: { '_id.brandName': 1, '_id.promptText': 1 } },
-    ]);
-
-    const rows: Row[] = data.map((item: any) => ({
-      brandName: String(item._id.brandName),
-      promptText: String(item._id.promptText),
-      model: String(item._id.model),
-      mentioned: Boolean(item.mentioned),
-      totalMentions: Number(item.totalMentions) || 0,
-    }));
-
-    const brandGroups: Partial<Record<string, Row[]>> = R.groupBy<Row>(
-      (row) => row.brandName,
-      rows
+    const brandEntities = await Promise.all(
+      input.brands.map(
+        async (brandName: string) =>
+          await this.brandsRepo.updateOne(
+            { name: brandName, runId: run.id },
+            { $set: { name: brandName, runId: run.id } },
+            { upsert: true }
+          )
+      )
     );
-    const brandMetrics: BrandMetric[] = Object.entries(
-      brandGroups as Record<string, Row[]>
-    ).map(([brandName, list]) => {
-      const totalMentions = list.reduce((acc, r) => acc + r.totalMentions, 0);
-      const groupedByPrompt: Partial<Record<string, Row[]>> = R.groupBy<Row>(
-        (row) => row.promptText,
-        list
-      );
-      const byPrompt: ByPrompt[] = Object.entries(
-        groupedByPrompt as Record<string, Row[]>
-      ).map(([promptText, items]) => {
-        const mentionCount = items.reduce(
-          (accumulator, row) => accumulator + row.totalMentions,
-          0
-        );
-        const mentioned = items.some((row) => row.mentioned);
-        const models = items.map((row) => row.model);
-        return { promptText, mentioned, mentionCount, models };
-      });
-      const mentionCount = byPrompt.reduce(
-        (acc, prompt) => acc + (prompt.mentioned ? 1 : 0),
-        0
-      );
-      const mentionRate =
-        byPrompt.length > 0 ? mentionCount / byPrompt.length : 0;
-      return { brandName, totalMentions, mentionCount, mentionRate, byPrompt };
-    });
 
-    const promptGroups: Partial<Record<string, Row[]>> = R.groupBy<Row>(
-      (row) => row.promptText,
-      rows
-    );
-    const promptMetrics: PromptMetric[] = Object.entries(
-      promptGroups as Record<string, Row[]>
-    ).map(([promptText, list]) => {
-      const totalResponses = list.length;
-      const successfulResponses = list.reduce(
-        (accumulator, row) => accumulator + (row.mentioned ? 1 : 0),
-        0
-      );
-      const brandsMetioned = Array.from(
-        new Set(list.filter((row) => row.mentioned).map((row) => row.brandName))
-      );
-      return {
-        promptText,
-        totalResponses,
-        successfulResponses,
-        brandsMetioned,
-      };
-    });
+    let totalPrompts = 0;
+    let failedPrompts = 0;
 
-    return { run, brandMetrics, promptMetrics };
-  }
-
-  private async processPromptModelPair(
-    runId: string,
-    prompt: Prompt,
-    brands: Brand[],
-    modelConfig: { model: LLMModel; provider: LLMProvider },
-    maxRetries: number,
-    timeout: number,
-
-    latencies: number[]
-  ): Promise<number> {
-    for (let retryCount = 0; retryCount <= maxRetries; retryCount++) {
-      try {
-        const formattedPrompt = this.formatPrompt(prompt.text, brands);
-        // Rate Limit LLM input
-        const llmResponse = await this.rateLimiter.scheduleWithDistributedLimit(
-          modelConfig.provider,
-          () =>
-            this.llmProvider.callLLM(formattedPrompt, {
-              model: modelConfig.model,
-              provider: modelConfig.provider,
-              timeout,
-              maxRetries,
-            })
+    for (const promptEntity of promptEntities) {
+      for (const modelString of input.models) {
+        const idx = modelString.indexOf(':');
+        const provider = (
+          idx === -1 ? modelString : modelString.slice(0, idx)
+        ) as LLMProvider;
+        const modelName = (
+          idx === -1 ? modelString : modelString.slice(idx + 1)
+        ) as LLMModel;
+        const formattedPrompt = this.buildFormattedPrompt(
+          promptEntity.text,
+          input.brands
         );
 
-        latencies.push(llmResponse.latencyMs);
-        const response = await this.responseRepository.create({
-          runId,
-          promptId: prompt.id,
-          modelName: modelConfig.model,
-          provider: modelConfig.provider,
-          latencyMs: llmResponse.latencyMs,
-          rawText: llmResponse.text,
-          tokenUsage: llmResponse.tokenUsage,
-          metadata: llmResponse.metadata,
-          status: ResponseStatus.SUCCESS,
-          retryCount,
-        });
+        try {
+          const result = await this.llmProvider.callLLM(formattedPrompt, {
+            provider,
+            model: modelName,
+            timeout: 30000,
+          });
 
-        await this.analyzeBrandMentions(response, brands, llmResponse.text);
-
-        return llmResponse.tokenUsage?.totalTokens || 0;
-      } catch (error) {
-        if (error instanceof Error) {
-          const msg = error.message;
-          const rateLimited = this.isRateLimitError(msg);
-          const status = rateLimited
-            ? ResponseStatus.RATE_LIMITED
-            : ResponseStatus.FAILED;
-
-          const finalAttempt = retryCount >= maxRetries || rateLimited;
-          if (finalAttempt) {
-            await this.responseRepository.create({
-              runId,
-              promptId: prompt.id,
-              modelName: modelConfig.model,
-              provider: modelConfig.provider,
-              latencyMs: 0,
-              rawText: '',
-              status,
-              errorMessage: rateLimited
-                ? `Rate limit exceeded: ${msg}`
-                : msg || 'Unknown error',
-              retryCount,
-            });
-            this.logger[rateLimited ? 'warn' : 'error'](
-              `${status}: ${modelConfig.provider}:${modelConfig.model} – ${msg}`
-            );
-            return 0;
+          const rawText = result.text ?? '';
+          const latencyMs = result.latencyMs ?? 0;
+          let meta: BrandMetrics | undefined;
+          const match = rawText.match(/\{[\s\S]*\}$/);
+          if (!match) {
+            meta = undefined;
+          } else {
+            try {
+              meta = JSON.parse(match[0]) as BrandMetrics;
+            } catch (error) {
+              this.logger.error(
+                'Failed to parse LLM JSON',
+                error instanceof Error ? error.stack : String(error)
+              );
+              meta = { brandMentions: {}, summary: 'Failed to parse LLM JSON' };
+            }
           }
 
-          const delayMs =
-            Math.min(1000 * Math.pow(2, retryCount), 10000) +
-            Math.floor(Math.random() * 500);
-          this.logger.warn(
-            `Retry ${retryCount + 1}/${maxRetries}: ${modelConfig.provider}:${
-              modelConfig.model
-            } (next in ${delayMs}ms)`
+          const responseEntity = await this.responsesRepo.create({
+            runId: run.id,
+            promptId: promptEntity.id,
+            model: modelString,
+            latencyMs,
+            rawText,
+            meta,
+          });
+
+          await this.recordMentions(responseEntity, brandEntities);
+          totalPrompts++;
+          this.logger.log(
+            `LLM response received for model: ${modelString} runId: ${run.id}`
           );
-          await new Promise((response) => setTimeout(response, delayMs));
+        } catch (error) {
+          failedPrompts++;
+          this.logger.error(
+            `Error calling LLM for model ${modelString}: ${
+              error instanceof Error ? error.stack : error
+            }`
+          );
         }
       }
     }
 
-    return 0;
+    await this.runs.updateOne(
+      { id: run.id },
+      { $set: { totalPrompts, failedPrompts, status: RunStatus.COMPLETED } }
+    );
+    return { runId: run.id.toString('hex') };
+  }
+  public async getRunStatus(runId: string): Promise<{ status: string }> {
+    const run = await this.runs.findOne({ id: runId });
+    if (!run) {
+      return { status: 'not_found' };
+    }
+    return { status: run.status };
+  }
+  private async recordMentions(response: Response, brands: Brand[]) {
+    const text = R.toLower(response.rawText);
+    await Promise.all(
+      R.map(async (brand: Brand) => {
+        const brandNameLower = R.toLower(brand.name);
+        const found = R.includes(brandNameLower, text);
+        const positionIndex = found
+          ? R.indexOf(brandNameLower, text)
+          : undefined;
+        await this.mentionsRepo.create({
+          responseId: response.id,
+          brandId: brand.id,
+          mentioned: found,
+          positionIndex,
+        });
+      }, brands)
+    );
   }
 
-  private async analyzeBrandMentions(
-    response: Response,
-    brands: Brand[],
-    responseText: string
-  ): Promise<void> {
-    const text = responseText.toLowerCase();
+  async getRunSummary(runId: string): Promise<{ prompts: PromptSummary[] }> {
+    const [responses, brands] = await Promise.all([
+      this.responsesRepo.find({ runId }),
+      this.brandsRepo.find({ runId }),
+    ]);
 
-    const mentions = (brand: Brand) => {
-      const key = brand.name.toLowerCase();
-      const found = text.includes(key);
-      const count = found ? (text.match(new RegExp(key, 'g')) || []).length : 0;
-      const index = found ? text.indexOf(key) : -1;
-      const context = found
-        ? responseText.substring(
-            Math.max(0, index - 50),
-            Math.min(responseText.length, index + key.length + 50)
-          )
-        : '';
-      return {
-        responseId: response.id,
-        brandId: brand.id,
-        mentioned: found,
-        positionIndex: found ? index : undefined,
-        mentionCount: count,
-        context: context || undefined,
-      } as Partial<BrandMention> & { responseId: string; brandId: string };
-    };
+    const configuredBrands = R.map(R.prop('name'), brands);
+    const summaries: PromptSummary[] = [];
 
-    const mentionsData = R.map(mentions, brands);
+    // Helper: find best matching key for each configured brand
 
     await Promise.all(
-      mentionsData.map(
-        (
-          mention: Partial<BrandMention> & {
-            responseId: string;
-            brandId: string;
-          }
-        ) => this.brandMentionRepository.create(mention)
-      )
-    );
-  }
+      R.map(async (response: Response) => {
+        const prompt = await this.promptsRepo.findOne({
+          id: response.promptId,
+        });
+        let brandMetrics = response.meta as BrandMetrics | undefined;
 
-  private generateContentHash(input: CreateRunRequest): string {
-    const normalize = (arr: string[]) =>
-      R ? R.sortBy(R.identity, arr) : [...arr].sort();
-    const content = {
-      prompts: normalize(input.prompts),
-      brands: normalize(input.brands),
-      models: R
-        ? R.sortBy((m: any) => `${m.provider}:${m.model}`, input.models)
-        : [...input.models].sort((a, b) =>
-            `${a.provider}:${a.model}`.localeCompare(`${b.provider}:${b.model}`)
+        // If no metrics, compute mentions by regex
+        if (!brandMetrics) {
+          const normalizedText = R.toLower(
+            R.replace(
+              /\s{2,}/g,
+              ' ',
+              R.replace(/[.,/#!$%^&*;:{}=\-_`~()]/g, ' ', response.rawText)
+            )
+          );
+          const brandMentions = R.reduce(
+            (acc, brand) => {
+              const regex = new RegExp(`\\b${R.toLower(brand)}\\b`, 'g');
+              acc[brand] = (R.match(regex, normalizedText) || []).length;
+              return acc;
+            },
+            {},
+            configuredBrands
+          );
+          brandMetrics = { brandMentions };
+        }
+
+        brandMetrics = {
+          ...brandMetrics,
+          brandMentions: R.reduce(
+            (acc, brand) => {
+              acc[brand] = this.findBestMatch(
+                brandMetrics.brandMentions,
+                brand
+              );
+              return acc;
+            },
+            {},
+            configuredBrands
           ),
-    };
-    return crypto
-      .createHash('sha256')
-      .update(JSON.stringify(content))
-      .digest('hex');
-  }
+          mentionRate: R.reduce(
+            (acc, brand) => {
+              acc[brand] = this.findBestMatch(brandMetrics.mentionRate, brand);
+              return acc;
+            },
+            {},
+            configuredBrands
+          ),
+          visibilityScore: R.reduce(
+            (acc, brand) => {
+              acc[brand] = this.findBestMatch(
+                brandMetrics.visibilityScore,
+                brand
+              );
+              return acc;
+            },
+            {},
+            configuredBrands
+          ),
+          ranking: Array.isArray(brandMetrics.ranking)
+            ? R.filter(
+                (name: string) =>
+                  R.any(
+                    (b: string) => R.toLower(name).includes(R.toLower(b)),
+                    configuredBrands
+                  ),
+                brandMetrics.ranking
+              )
+            : [],
+        };
 
-  private isRateLimitError(errorMsg: string): boolean {
-    return (
-      errorMsg.includes('Rate limit') ||
-      errorMsg.includes('rate limit') ||
-      errorMsg.includes('429') ||
-      errorMsg.includes('Too Many Requests')
+        summaries.push({
+          prompt: prompt?.text ?? 'unknown prompt',
+          model: response.model,
+          answer: response.rawText,
+          brandMetrics,
+        });
+      }, responses)
     );
+
+    return { prompts: summaries };
   }
 
-  private formatPrompt(userQuestion: string, brands: Brand[]): string {
-    const brandList = brands.map((b) => `- ${b.name}`).join('\n');
+  private buildFormattedPrompt(promptText: string, brands: string[]): string {
+    return `
+      You are an AI assistant analyzing brand visibility.
 
-    return `You are an AI assistant evaluating and enhancing brand visibility in responses.
+      Task:
+      - Answer the user's question while emphasizing all brands provided.
+      - Mention each brand multiple times and compare them throughout the response.
 
-          Brands to reference when relevant:
-          ${brandList}
+      Question:
+      ${promptText}
 
-          --- User Question ---
-          ${userQuestion}
+      Instructions:
+      - Highlight each brand’s strengths, weaknesses, features, and best use cases.
+      - Provide specific comparisons and recommendations.
+      - Rank the brands and justify the ranking.
+      - Use the brands naturally but frequently.
 
-          --- Instructions ---
-          Provide a natural, helpful answer to the user's question.
-          When appropriate, recommend or mention specific brands from the list above.
-          Do not force a brand mention; only include it when it genuinely fits the context.`;
+      Output:
+      1. Full answer text.
+      2. JSON object on a new line with structure:
+      {
+        "brandMentions": { "BrandA": <count>, ... },
+        "mentionRate": { "BrandA": <rate>, ... },
+        "visibilityScore": { "BrandA": <score>, ... },
+        "ranking": ["BrandA", "BrandB", ...],
+        "summary": "Short summary of brand visibility."
+      }
+      Return only the JSON object, no markdown.
+      `;
   }
+
+  private findBestMatch = (
+    object: Record<string, number> | undefined,
+    brand: string
+  ): number => {
+    if (!object) return 0;
+    const brandLower = R.toLower(brand);
+    const keys = R.keys(object);
+    const exact = R.find((key) => R.toLower(key) === brandLower, keys);
+
+    if (exact) return object[exact];
+
+    const partial = R.find(
+      (key) =>
+        R.toLower(key).includes(brandLower) ||
+        brandLower.includes(R.toLower(key)),
+      keys
+    );
+
+    if (partial) return object[partial];
+
+    return 0;
+  };
 }

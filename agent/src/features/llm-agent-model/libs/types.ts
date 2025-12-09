@@ -47,6 +47,14 @@ export const ModelToProvider: Record<LLMModel, LLMProvider> = {
   [AnthropicModel.CLAUDE_3_SONNET]: LLMProvider.ANTHROPIC,
   [AnthropicModel.CLAUDE_3_HAIKU]: LLMProvider.ANTHROPIC,
 };
+export enum RunStatus {
+  PENDING = 'pending',
+  RUNNING = 'running',
+  COMPLETED = 'completed',
+  FAILED = 'failed',
+  PARTIAL = 'partial',
+  CANCELLED = 'cancelled',
+}
 
 export function isValidModelForProvider(
   model: string,

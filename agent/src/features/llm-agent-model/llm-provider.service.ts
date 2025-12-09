@@ -70,7 +70,6 @@ export class LLMProviderService {
     role?: string
   ): Promise<LLMResponse> {
     const start = Date.now();
-    const useCB = config.useCircuitBreaker !== false;
 
     const exec = async () => {
       switch (config.provider) {
@@ -84,9 +83,7 @@ export class LLMProviderService {
     };
 
     try {
-      return useCB
-        ? await this.circuitBreaker.execute(config.provider, exec)
-        : await exec();
+      return await this.circuitBreaker.execute(config.provider, exec);
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       this.logger.error(
@@ -161,7 +158,7 @@ export class LLMProviderService {
             max_tokens: 1000,
             messages: [{ role: 'user', content: prompt }],
           },
-          { timeout, signal } as any
+          { timeout, signal }
         ),
       timeout
     );

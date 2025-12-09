@@ -67,7 +67,9 @@
       ],
       "@genesis/async-event-module/*": ["packages/async-event-module/src/*"],
       "@genesis/idempotency/*": ["packages/idempotency/src/*"],
-      "@genesis/idempotency": ["packages/idempotency/src/index.ts"]
+      "@genesis/idempotency": ["packages/idempotency/src/index.ts"],
+      "@genesis/object-id": ["packages/object-id/src/index.ts"],
+      "@genesis/object-id/*": ["packages/object-id/src/*"]
     }
   }
 }

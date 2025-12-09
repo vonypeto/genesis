@@ -1,28 +1,21 @@
-import { MongooseRepository, Repository } from '@genesis/repository';
-import { Connection } from 'mongoose';
+import { Pool } from 'pg';
+import { PostgresRepository } from '@genesis/postgresql-repository';
+import { Repository } from '@genesis/repository';
+import { ObjectId } from '@genesis/object-id';
 
-export type Prompt = {
-  id: string;
-  text: string;
-  category?: string;
-  tags?: string[];
-  createdAt: Date;
-  updatedAt: Date;
+export type Prompt = { id: ObjectId; text: string; runId: ObjectId };
+
+export const PromptsSchema = {
+  text: String,
+  runId: String,
 };
 
-export type PromptRepository = Repository<Prompt>;
+export type PromptsRepository = Repository<Prompt>;
 
-export function PromptRepositoryFactory(
-  connection: Connection
-): PromptRepository {
-  return new MongooseRepository<Prompt>(
-    connection,
-    'Prompt',
-    {
-      text: { type: String, required: true },
-      category: String,
-      tags: [String],
-    },
-    [[{ text: 1 }, { unique: true }], [{ createdAt: -1 }]]
-  );
+export async function createPromptsRepository(
+  pool: Pool
+): Promise<Repository<Prompt>> {
+  const repo = new PostgresRepository<Prompt>(pool, 'prompts', PromptsSchema);
+  await repo.initialize();
+  return repo;
 }

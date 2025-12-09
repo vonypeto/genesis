@@ -25,6 +25,12 @@
       "path": "../packages/repository/tsconfig.lib.json"
     },
     {
+      "path": "../packages/idempotency"
+    },
+    {
+      "path": "../packages/object-id/tsconfig.lib.json"
+    },
+    {
       "path": "../packages/async-event-module"
     },
     {

@@ -183,6 +183,9 @@ importers:
       '@types/jest':
         specifier: ^30.0.0
         version: 30.0.0
+      '@types/mocha':
+        specifier: ^10.0.10
+        version: 10.0.10
       '@types/mongoose':
         specifier: ^5.11.97
         version: 5.11.97
@@ -357,6 +360,22 @@ importers:
   packages/nestjs-rate-limiter-module: {}
 
   packages/nestjs-redis-module: {}
+
+  packages/object-id:
+    dependencies:
+      pg:
+        specifier: ^8.11.3
+        version: 8.16.3
+      uuid:
+        specifier: ^9.0.1
+        version: 9.0.1
+    devDependencies:
+      '@types/pg':
+        specifier: ^8.11.0
+        version: 8.15.6
+      '@types/uuid':
+        specifier: ^9.0.7
+        version: 9.0.8
 
   packages/postgresql-repository:
     dependencies:
@@ -2930,6 +2949,9 @@ packages:
   '@types/minimatch@6.0.0':
     resolution: {integrity: sha512-zmPitbQ8+6zNutpwgcQuLcsEpn/Cj54Kbn7L5pX0Os5kdWplB7xPgEh/g+SWOB/qmows2gpuCaPyduq8ZZRnxA==}
     deprecated: This is a stub types definition. minimatch provides its own type definitions, so you do not need this installed.
+
+  '@types/mocha@10.0.10':
+    resolution: {integrity: sha512-xPyYSz1cMPnJQhl0CLMH68j3gprKZaTjG3s5Vi+fDgx+uhG9NOXwbVt52eFS8ECyXhyKcjDLCBEqBExKuiZb7Q==}
 
   '@types/mongoose@5.11.97':
     resolution: {integrity: sha512-cqwOVYT3qXyLiGw7ueU2kX9noE8DPGRY6z8eUxudhXY8NZ7DMKYAxyZkLSevGfhCX3dO/AoX5/SO9lAzfjon0Q==}
@@ -12307,6 +12329,8 @@ snapshots:
   '@types/minimatch@6.0.0':
     dependencies:
       minimatch: 10.1.1
+
+  '@types/mocha@10.0.10': {}
 
   '@types/mongoose@5.11.97':
     dependencies:
