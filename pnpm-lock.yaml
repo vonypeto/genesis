@@ -105,7 +105,7 @@ importers:
         specifier: ^7.8.0
         version: 7.8.2
       tslib:
-        specifier: ^2.3.0
+        specifier: ^2.8.1
         version: 2.8.1
       yamljs:
         specifier: ^0.3.0
@@ -287,6 +287,9 @@ importers:
 
   packages/arque:
     dependencies:
+      '@scaleforge/joser':
+        specifier: ^0.8.8
+        version: 0.8.8
       async-mutex:
         specifier: ^0.5.0
         version: 0.5.0
@@ -363,19 +366,9 @@ importers:
 
   packages/object-id:
     dependencies:
-      pg:
-        specifier: ^8.11.3
-        version: 8.16.3
-      uuid:
-        specifier: ^9.0.1
-        version: 9.0.1
-    devDependencies:
-      '@types/pg':
-        specifier: ^8.11.0
-        version: 8.15.6
-      '@types/uuid':
-        specifier: ^9.0.7
-        version: 9.0.8
+      bs58:
+        specifier: ^5.0.0
+        version: 5.0.0
 
   packages/postgresql-repository:
     dependencies:
@@ -2595,6 +2588,9 @@ packages:
   '@scaleforge/joser@0.5.1':
     resolution: {integrity: sha512-+wg+78MX9zgxPuZ9N3LyplHAfdvTfAy/rObcOBHGO4UsRfQLzAhh2SPPEledUD7vr/PBLbPTzEmIofkWrcbkBQ==}
 
+  '@scaleforge/joser@0.8.8':
+    resolution: {integrity: sha512-6/6ArLi3PbibOBxaphI8kIkXtOohnVT4fmajaKNLciw/6mYPhKNE47WiRAXCWY8MxMCpI3LwmS5dLxDFz8PizA==}
+
   '@sinclair/typebox@0.27.8':
     resolution: {integrity: sha512-+Fj43pSMwJs4KRrH/938Uf+uAELIgVBmQzg/q1YG10djyfA3TnrU8N8XzqCh/okZdszqBQTZf96idMfE5lnwTA==}
 
@@ -3720,6 +3716,9 @@ packages:
       bare-abort-controller:
         optional: true
 
+  base-x@4.0.1:
+    resolution: {integrity: sha512-uAZ8x6r6S3aUM9rbHGVOIsR15U/ZSc82b3ymnCPsT45Gk1DDvhDPdIgB5MrhirZWt+5K0EEPQH985kNqZgNPFw==}
+
   base-x@5.0.1:
     resolution: {integrity: sha512-M7uio8Zt++eg3jPj+rHMfCC+IuygQHHCOU+IYsVtik6FWjuYpVt/+MRKcgsAMHh8mMFAwnB+Bs+mTrFiXjMzKg==}
 
@@ -3794,6 +3793,9 @@ packages:
   bs-logger@0.2.6:
     resolution: {integrity: sha512-pd8DCoxmbgc7hyPKOvxtqNcjYoOsABPQdcCUjGp3d42VR2CX1ORhk2A87oqqu5R1kk+76nsxZupkmyd+MVtCog==}
     engines: {node: '>= 6'}
+
+  bs58@5.0.0:
+    resolution: {integrity: sha512-r+ihvQJvahgYT50JD05dyJNKlmmSlMoOGwn1lCcEzanPglg7TxYjioQUYehQ9mAR/+hOSd2jRc/Z2y5UxBymvQ==}
 
   bs58@6.0.0:
     resolution: {integrity: sha512-PD0wEnEYg6ijszw/u8s+iI3H17cTymlrwkKhDhPZq+Sokl3AU4htyBFTjAeNAlCCmg0f53g6ih3jATyCKftTfw==}
@@ -11929,6 +11931,8 @@ snapshots:
 
   '@scaleforge/joser@0.5.1': {}
 
+  '@scaleforge/joser@0.8.8': {}
+
   '@sinclair/typebox@0.27.8': {}
 
   '@sinclair/typebox@0.34.41': {}
@@ -13239,6 +13243,8 @@ snapshots:
 
   bare-events@2.8.2: {}
 
+  base-x@4.0.1: {}
+
   base-x@5.0.1: {}
 
   base64-js@1.5.1: {}
@@ -13344,6 +13350,10 @@ snapshots:
   bs-logger@0.2.6:
     dependencies:
       fast-json-stable-stringify: 2.1.0
+
+  bs58@5.0.0:
+    dependencies:
+      base-x: 4.0.1
 
   bs58@6.0.0:
     dependencies:
